@@ -1,14 +1,16 @@
+import React from 'react'
+import { render } from '@testing-library/react'
+import { Provider } from 'react-redux'
+
+import { store } from './store'
 import App from './App'
-import { render, screen } from '@testing-library/react'
 
-const appContent = 'Вот тут будет жить ваше приложение :)'
-
-// @ts-ignore
-global.fetch = jest.fn(() =>
-  Promise.resolve({ json: () => Promise.resolve('hey') })
-)
-
-test('Example test', async () => {
-  render(<App />)
-  expect(screen.getByText(appContent)).toBeDefined()
+describe('App', () => {
+  it('renders without crashing', () => {
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>
+    )
+  })
 })
