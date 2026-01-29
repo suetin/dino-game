@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "experimentalDecorators": true,  // Включает поддержку декораторов
+    "emitDecoratorMetadata": true,   // Позволяет сохранять типы данных для Sequelize
     "composite": true,
     "target": "es2019",
     "module": "commonjs",
@@ -26,4 +28,5 @@
     },
     "outDir": "dist"
   }
+
 }
