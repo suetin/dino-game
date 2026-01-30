@@ -1,76 +1,227 @@
-### Как запускать?
+# Dino Game — командный SPA-проект
 
-1. Убедитесь что у вас установлен `node` и `docker`
-2. Выполните команду `yarn bootstrap` - это обязательный шаг, без него ничего работать не будет :)
-3. Выполните команду `yarn dev`
-3. Выполните команду `yarn dev --scope=client` чтобы запустить только клиент
-4. Выполните команду `yarn dev --scope=server` чтобы запустить только server
+## Описание проекта
 
+**Dino Game** — клиентское SPA-приложение с 2D-игрой на Canvas, авторизацией, профилем пользователя, лидербордом и форумом.
+
+Проект разрабатывается командой в рамках учебного курса и ориентирован на реальные практики командной frontend/backend-разработки.
+
+Проект поддерживает:
+
+- работу без интернета (offline);
+- мобильную версию;
+- современный стек (React, TypeScript, Redux, Canvas, Service Workers);
+- серверную часть (Node.js, Express, PostgreSQL).
+
+## Технологический стек
+
+### Frontend
+
+- Vite
+- React
+- TypeScript
+- React Router
+- Redux Toolkit + Reselect
+- Canvas API
+- Service Workers
+- Custom Hooks и HOC
+- ESLint + Prettier
+- Jest + Testing Library
+
+### Backend
+
+- Node.js
+- Express
+- PostgreSQL
+- Sequelize
+- JWT (в работе)
+- REST API
+
+### Инфраструктура
+
+- Monorepo (Lerna + Yarn workspaces)
+- Docker / Docker Compose
+- CI (GitHub Actions)
+- Nginx (production)
+- HTTP/2, кеширование и сжатие (production)
+
+## Структура репозитория
+
+```
+dino-game/
+├── packages/
+│   ├── client/        # Frontend (React + TypeScript)
+│   └── server/        # Backend (Node.js + Express)
+├── docker-compose.yml
+├── Dockerfile.client
+├── Dockerfile.server
+├── lerna.json
+├── README.md
+└── docs/
+```
+
+Подробное описание структуры: [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## Запуск проекта локально
+
+### Требования
+
+- Node.js >= 16 (версия указана в .nvmrc)
+- Yarn 1.22.x
+- Docker (опционально)
+
+### Установка зависимостей
+
+```bash
+yarn bootstrap
+```
+
+### Запуск приложения
+
+```bash
+# Backend
+yarn dev --scope=server
+
+# Frontend
+yarn dev --scope=client
+```
+
+- **Frontend:** http://localhost:3000  
+- **Backend API:** http://localhost:3001
 
 ### Как добавить зависимости?
-В этом проекте используется `monorepo` на основе [`lerna`](https://github.com/lerna/lerna)
 
-Чтобы добавить зависимость для клиента 
-```yarn lerna add {your_dep} --scope client```
+В проекте используется monorepo на основе [Lerna](https://github.com/lerna/lerna).
 
-Для сервера
-```yarn lerna add {your_dep} --scope server```
+- Для клиента: `yarn lerna add {your_dep} --scope client`
+- Для сервера: `yarn lerna add {your_dep} --scope server`
+- Для обоих: `yarn lerna add {your_dep}`
 
-И для клиента и для сервера
-```yarn lerna add {your_dep}```
+Dev-зависимость: добавьте флаг `--dev`, например:  
+`yarn lerna add {your_dep} --dev --scope server`
 
+## Тесты и линтинг
 
-Если вы хотите добавить dev зависимость, проделайте то же самое, но с флагом `dev`
-```yarn lerna add {your_dep} --dev --scope server```
+Перед каждым Pull Request проверки обязательны.
 
+```bash
+yarn lint
+yarn test
+```
 
-### Тесты
+Pull Request с ошибками линтера или тестов не принимается.
 
-Для клиента используется [`react-testing-library`](https://testing-library.com/docs/react-testing-library/intro/)
+Для клиента используется [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/).
 
-```yarn test```
+Форматирование кода: `yarn format`
 
-### Линтинг
+## CI (Continuous Integration)
 
-```yarn lint```
+В репозитории настроен CI (GitHub Actions), который автоматически:
 
-### Форматирование prettier
+- запускает ESLint;
+- запускает unit-тесты;
+- блокирует merge при ошибках.
 
-```yarn format```
+Все проверки должны быть зелёными перед merge.
 
-### Production build
+## Git-flow и Dev-flow
 
-```yarn build```
+### Основные ветки
 
-И чтобы посмотреть что получилось
+- **main** — стабильная версия проекта;
+- **dev** — основная рабочая ветка команды.
 
+### Правила работы
 
-`yarn preview --scope client`
-`yarn preview --scope server`
+- Любая задача начинается от ветки **dev**
+- Формат веток: `feature/<short-name>`, `fix/<short-name>`
+- Pull Request всегда направляется в **dev**; минимум один осмысленный апрув от члена команды; линт и тесты должны проходить
+- Ветка **main** обновляется только через **dev**
+
+### Code Review
+
+Ревью — обязательная часть процесса разработки.
+
+Перед отправкой PR: линтер включён и проходит; код соответствует принципам SOLID, DRY, KISS; отсутствует «код на будущее» и мусорные файлы; README и документация актуальны.
+
+Каждый участник: сдаёт один PR за спринт на ревью ментору; до командного зачёта должен получить два апрува на задачи с высокой сложностью.
+
+## Функциональность приложения
+
+- Авторизация и регистрация пользователя
+- Профиль пользователя с возможностью изменения данных и аватара
+- 2D-игра на Canvas с несколькими состояниями
+- Лидерборд пользователей с сортировкой
+- Форум (темы, комментарии, ответы)
+- Страницы ошибок 404 и 500
+- Темизация (минимум две темы)
+- Offline-режим
+- Использование Web API (LocalStorage, Page Visibility, Notifications и др.)
+
+## Алгоритмы и структуры данных
+
+В проекте реализованы:
+
+- собственный алгоритм сортировки (без использования Array.sort);
+- структура данных «очередь» (Queue) без массивов;
+- структура данных «стек» (Stack) без массивов.
+
+## Безопасность
+
+- Защита от XSS (санитизация пользовательского ввода, CSP);
+- Проверка авторизации на защищённых эндпоинтах;
+- Ограничение частоты запросов (rate limiting);
+- Централизованная обработка ошибок клиента и сервера.
+
+## Команда проекта
+
+| Роль | Участник | Зона ответственности |
+|------|----------|------------------------|
+| Тимлид | Илья Гажиенко | архитектура, координация команды, CI, Dev-flow |
+| Frontend | Александр Суетин | архитектура клиента, Redux, игровая логика |
+| Frontend | Ольга Беляева | авторизация, регистрация, формы, UX |
+| Backend | Nabi Sandurov | серверная логика, API, форум |
+| UI / поддержка | Валентина Челпанова | вёрстка, темы, адаптивность |
+
+## Документация
+
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — архитектура проекта
+- [SETUP_GUIDE.md](docs/SETUP_GUIDE.md) — настройка и запуск
+- [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) — перенос и интеграция
+- [SPRINT_PLAN.md](docs/SPRINT_PLAN.md) — план работ
+- [TEAM_GUIDE.md](docs/TEAM_GUIDE.md) — правила командной работы
+
+## Production
+
+### Сборка
+
+```bash
+yarn build
+```
+
+Просмотр собранной статики: `yarn preview --scope client`, `yarn preview --scope server`
+
+### Окружение в Docker
+
+Перед первым запуском выполните `node init.js`.
+
+```bash
+docker compose up
+```
+
+Запускаются три сервиса: nginx (клиентская статика), node (сервер), postgres (БД).
+
+Один сервис: `docker compose up {service_name}`, например `docker compose up server`.
+
+### Автодеплой статики на Vercel
+
+Зарегистрируйте аккаунт на [Vercel](https://vercel.com/), следуйте [инструкции Vite](https://vitejs.dev/guide/static-deploy.html#vercel-for-git). В качестве **root directory** укажите `packages/client`. PR будут автоматически деплоиться на Vercel.
 
 ## Хуки
-В проекте используется [lefthook](https://github.com/evilmartians/lefthook)
-Если очень-очень нужно пропустить проверки, используйте `--no-verify` (но не злоупотребляйте :)
+
+В проекте используется [Lefthook](https://github.com/evilmartians/lefthook). Если очень нужно пропустить проверки — `--no-verify` (не злоупотребляйте).
 
 ## Ой, ничего не работает :(
 
-Откройте issue, я приду :)
-
-## Автодеплой статики на vercel
-Зарегистрируйте аккаунт на [vercel](https://vercel.com/)
-Следуйте [инструкции](https://vitejs.dev/guide/static-deploy.html#vercel-for-git)
-В качестве `root directory` укажите `packages/client`
-
-Все ваши PR будут автоматически деплоиться на vercel. URL вам предоставит деплоящий бот
-
-## Production окружение в докере
-Перед первым запуском выполните `node init.js`
-
-
-`docker compose up` - запустит три сервиса
-1. nginx, раздающий клиентскую статику (client)
-2. node, ваш сервер (server)
-3. postgres, вашу базу данных (postgres)
-
-Если вам понадобится только один сервис, просто уточните какой в команде
-`docker compose up {sevice_name}`, например `docker compose up server`
+Откройте issue — разберёмся.
