@@ -3,9 +3,9 @@ import { Helmet } from 'react-helmet'
 
 import { Header } from '../components/Header'
 import { usePage } from '../hooks/usePage'
-import { PageInitArgs } from '../routes'
 import { DinoGame } from '../games/dino/DinoGame'
 import { GAME_HEIGHT, GAME_WIDTH } from '../games/dino/constants'
+import '../styles/DinoGame.css'
 
 export const DinoGamePage = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -47,23 +47,25 @@ export const DinoGamePage = () => {
   }, [])
 
   return (
-    <div>
+    <div className="dino-page">
       <Helmet>
         <meta charSet="utf-8" />
         <title>Dino Game</title>
         <meta name="description" content="Игра на Canvas API" />
       </Helmet>
       <Header />
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} />
+      <div className="dino-canvas-wrap">
+        <canvas
+          ref={canvasRef}
+          width={GAME_WIDTH}
+          height={GAME_HEIGHT}
+          className="dino-canvas"
+        />
       </div>
-      <p style={{ textAlign: 'center' }}>
-        Прыжок: Space или ArrowUp. Сброс: R.
-      </p>
     </div>
   )
 }
 
-export const initDinoGamePage = async (_: PageInitArgs) => {
+export const initDinoGamePage = async () => {
   return Promise.resolve()
 }

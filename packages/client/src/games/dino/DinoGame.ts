@@ -129,6 +129,6 @@ export class DinoGame {
 
     ctx.fillStyle = '#1a1a1a'
     ctx.font = '16px monospace'
-    ctx.fillText(`Score: ${this.score}`, 16, 24)
+    ctx.fillText(`Очки: ${this.score}`, 16, 24)
   }
 }
