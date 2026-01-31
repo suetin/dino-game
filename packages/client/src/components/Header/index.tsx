@@ -11,6 +11,9 @@ export const Header = () => {
           <Link to="/friends">Страница со списком друзей</Link>
         </li>
         <li>
+          <Link to="/dino">Dino Game</Link>
+        </li>
+        <li>
           <Link to="/404">404</Link>
         </li>
       </ul>

@@ -5,3 +5,6 @@ node_modules/
 dist
 tmp
 *.log
+packages/client/tsconfig.server.tsbuildinfo
+packages/client/server/index.d.ts
+packages/client/server/index.js
