@@ -51,7 +51,7 @@ export const DinoGamePage = () => {
       <Helmet>
         <meta charSet="utf-8" />
         <title>Dino Game</title>
-        <meta name="description" content="Игра на Canvas API" />
+        <meta name="description" content="Дино" />
       </Helmet>
       <Header />
       <div className="dino-canvas-wrap">
