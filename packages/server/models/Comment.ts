@@ -9,6 +9,7 @@ import {
 } from 'sequelize-typescript'
 import { Topic } from './Topic'
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 @Table({ tableName: 'comments' })
 export class Comment extends Model {
   @Column({ type: DataType.TEXT, allowNull: false })
@@ -20,7 +21,7 @@ export class Comment extends Model {
 
   @ForeignKey(() => Comment)
   @Column({ type: DataType.INTEGER })
-  parentId!: number // Если тут ID другого коммента — это ответ (reply)
+  parentId!: number
 
   @Column({ type: DataType.INTEGER, allowNull: false })
   author_id!: number
