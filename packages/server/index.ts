@@ -1,20 +1,18 @@
 import 'reflect-metadata'
 import dotenv from 'dotenv'
 import cors from 'cors'
-dotenv.config()
-
 import express, { Request, Response } from 'express'
 import { createClientAndConnect } from './db'
 import { Topic } from './models/Topic'
 import { Comment } from './models/Comment'
 
+dotenv.config()
+
 const app = express()
 app.use(cors())
-
 app.use(express.json())
-const port = Number(process.env.SERVER_PORT) || 3001
 
-createClientAndConnect()
+const port = Number(process.env.SERVER_PORT) || 3001
 
 // --- Роуты Форума ---
 
@@ -62,7 +60,7 @@ app.get('/api/forum/topics/:id', async (req: Request, res: Response) => {
         {
           model: Comment,
           where: { parentId: null }, // Берем только "корневые" комментарии
-          required: false, // Если комментов нет, тема всё равно должна вернуться
+          required: false,
           include: [
             {
               model: Comment,
@@ -109,8 +107,6 @@ app.post('/api/forum/comments', async (req: Request, res: Response) => {
   }
 })
 
-// --- РЕДАКТИРОВАНИЕ И УДАЛЕНИЕ ---
-
 // 5. Редактировать тему
 app.put('/api/forum/topics/:id', async (req: Request, res: Response) => {
   try {
@@ -136,7 +132,7 @@ app.put('/api/forum/topics/:id', async (req: Request, res: Response) => {
   }
 })
 
-// 6. Удалить тему (вместе с ней удалятся и комментарии из-за CASCADE)
+// 6. Удалить тему
 app.delete('/api/forum/topics/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params
@@ -172,6 +168,8 @@ app.put('/api/forum/comments/:id', async (req: Request, res: Response) => {
   }
 })
 
+// --- Заглушки ---
+
 app.get('/friends', (_, res) => {
   res.json([
     { name: 'Саша', secondName: 'Панов' },
@@ -180,14 +178,31 @@ app.get('/friends', (_, res) => {
   ])
 })
 
-app.get('/user', (_, res) => {
-  res.json({ name: '</script>Степа', secondName: 'Степанов' })
+app.get('/user', (_req: Request, res: Response) => {
+  res.json({
+    name: 'Степа',
+    secondName: 'Степанов',
+  })
 })
 
 app.get('/', (_, res) => {
   res.json('👋 Howdy from the server :)')
 })
 
-app.listen(port, () => {
-  console.log(`  ➜ 🎸 Server is listening on port: ${port}`)
-})
+// --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Безопасный запуск ---
+
+async function start() {
+  try {
+    // Ждем инициализации базы данных перед тем, как открыть порт
+    await createClientAndConnect()
+
+    app.listen(port, () => {
+      console.log(`  ➜ 🎸 Server is listening on port: ${port}`)
+    })
+  } catch (error) {
+    console.error('❌ Не удалось запустить приложение:', error)
+    process.exit(1) // Останавливаем выполнение при критической ошибке
+  }
+}
+
+start()
