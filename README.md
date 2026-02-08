@@ -27,6 +27,8 @@
 - Custom Hooks и HOC
 - ESLint + Prettier
 - Jest + Testing Library
+- Tailwind CSS v3
+- Shadcn
 
 ### Backend
 
@@ -222,6 +224,17 @@ docker compose up
 ## Хуки
 
 В проекте используется [Lefthook](https://github.com/evilmartians/lefthook). Если очень нужно пропустить проверки — `--no-verify` (не злоупотребляйте).
+
+## UI 
+### Работа со стилями
+Tailwind CSS v3 - https://v3.tailwindcss.com/docs/installation
+
+Слева на странице есть поиск - через него удобно находить классы. 
+
+### Установка компонентов
+Shadcn - https://ui.shadcn.com/docs/components
+
+Есть список компонентов и инструкции по их установке и использованию у каждого.
 
 ## Ой, ничего не работает :(
 

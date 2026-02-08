@@ -1,9 +1,16 @@
 import { AppDispatch, RootState } from './store'
 
-import { initMainPage, MainPage } from './pages/Main'
-import { initFriendsPage, FriendsPage } from './pages/FriendsPage'
-import { initDinoGamePage, DinoGamePage } from './pages/DinoGame'
+import { Layout } from './components/Layout'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { MainPage } from './pages/Main'
+import { initGamePage, GamePage } from './pages/Game'
 import { initNotFoundPage, NotFoundPage } from './pages/NotFound'
+import { LoginPage } from './pages/Login'
+import { RegisterPage } from './pages/Register'
+import { initProfilePage, ProfilePage } from './pages/Profile'
+import { LeaderboardPage } from './pages/Leaderboard'
+import { ForumPage } from './pages/Forum'
+import { Error500Page } from './pages/Error500'
 
 export type PageInitContext = {
   clientToken?: string
@@ -18,22 +25,53 @@ export type PageInitArgs = {
 export const routes = [
   {
     path: '/',
-    Component: MainPage,
-    fetchData: initMainPage,
-  },
-  {
-    path: '/friends',
-    Component: FriendsPage,
-    fetchData: initFriendsPage,
-  },
-  {
-    path: '/dino',
-    Component: DinoGamePage,
-    fetchData: initDinoGamePage,
-  },
-  {
-    path: '*',
-    Component: NotFoundPage,
-    fetchData: initNotFoundPage,
+    Component: Layout,
+    children: [
+      {
+        index: true,
+        Component: MainPage,
+      },
+      {
+        path: 'login',
+        Component: LoginPage,
+      },
+      {
+        path: 'register',
+        Component: RegisterPage,
+      },
+      {
+        path: '500',
+        Component: Error500Page,
+      },
+      // Защищенные маршруты
+      {
+        Component: ProtectedRoute,
+        children: [
+          {
+            path: 'profile',
+            Component: ProfilePage,
+            fetchData: initProfilePage,
+          },
+          {
+            path: 'game',
+            Component: GamePage,
+            fetchData: initGamePage,
+          },
+          {
+            path: 'leaderboard',
+            Component: LeaderboardPage,
+          },
+          {
+            path: 'forum',
+            Component: ForumPage,
+          },
+        ],
+      },
+      {
+        path: '*',
+        Component: NotFoundPage,
+        fetchData: initNotFoundPage,
+      },
+    ],
   },
 ]

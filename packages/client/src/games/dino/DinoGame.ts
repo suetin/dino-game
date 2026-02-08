@@ -112,12 +112,7 @@ export class DinoGame {
     ctx.stroke()
 
     ctx.fillStyle = '#2f2f2f'
-    ctx.fillRect(
-      this.dino.position.x,
-      this.dino.position.y,
-      DINO_WIDTH,
-      DINO_HEIGHT
-    )
+    ctx.fillRect(this.dino.position.x, this.dino.position.y, DINO_WIDTH, DINO_HEIGHT)
 
     ctx.fillStyle = '#0e8a5a'
     ctx.fillRect(

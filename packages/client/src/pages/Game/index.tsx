@@ -1,16 +1,15 @@
-import { useEffect, useRef } from 'react'
-import { Helmet } from 'react-helmet'
+import React, { useEffect, useRef } from 'react'
+import { usePage } from '@/hooks/usePage'
+import { DinoGame } from '@/games/dino/DinoGame'
+import { GAME_HEIGHT, GAME_WIDTH } from '@/games/dino/constants'
+import '../../styles/DinoGame.css'
+import { WrapperContent } from '@/components/WrapperContent'
+import { PageMeta } from '@/components/PageMeta'
 
-import { Header } from '../components/Header'
-import { usePage } from '../hooks/usePage'
-import { DinoGame } from '../games/dino/DinoGame'
-import { GAME_HEIGHT, GAME_WIDTH } from '../games/dino/constants'
-import '../styles/DinoGame.css'
-
-export const DinoGamePage = () => {
+export const GamePage = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  usePage({ initPage: initDinoGamePage })
+  usePage({ initPage: initGamePage })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -47,25 +46,17 @@ export const DinoGamePage = () => {
   }, [])
 
   return (
-    <div className="dino-page">
-      <Helmet>
-        <meta charSet="utf-8" />
-        <title>Dino Game</title>
-        <meta name="description" content="Дино" />
-      </Helmet>
-      <Header />
-      <div className="dino-canvas-wrap">
-        <canvas
-          ref={canvasRef}
-          width={GAME_WIDTH}
-          height={GAME_HEIGHT}
-          className="dino-canvas"
-        />
+    <WrapperContent className="max-w-[600px] items-center justify-start text-center">
+      <PageMeta title="Dino Game" description="Дино" />
+      <div className="dino-page">
+        <div className="dino-canvas-wrap">
+          <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} className="dino-canvas" />
+        </div>
       </div>
-    </div>
+    </WrapperContent>
   )
 }
 
-export const initDinoGamePage = async () => {
+export const initGamePage = async () => {
   return Promise.resolve()
 }
