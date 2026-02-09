@@ -35,5 +35,4 @@ const start = async () => {
   }
 }
 
-// Запуск
 start()
