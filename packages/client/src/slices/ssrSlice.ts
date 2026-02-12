@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import { RootState } from '../store'
+import { RootState } from '@/store'
 
 export interface SsrState {
   pageHasBeenInitializedOnServer: boolean
@@ -14,10 +14,7 @@ export const ssrSlice = createSlice({
   name: 'ssr',
   initialState,
   reducers: {
-    setPageHasBeenInitializedOnServer: (
-      state,
-      { payload }: PayloadAction<boolean>
-    ) => {
+    setPageHasBeenInitializedOnServer: (state, { payload }: PayloadAction<boolean>) => {
       state.pageHasBeenInitializedOnServer = payload
     },
   },

@@ -10,6 +10,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import friendsReducer from './slices/friendsSlice'
 import ssrReducer from './slices/ssrSlice'
 import userReducer from './slices/userSlice'
+import themeReducer from './slices/themeSlice'
 
 // Глобально декларируем в window наш ключик
 // и задаем ему тип такой же как у стейта в сторе
@@ -23,12 +24,12 @@ export const reducer = combineReducers({
   friends: friendsReducer,
   ssr: ssrReducer,
   user: userReducer,
+  theme: themeReducer,
 })
 
 export const store = configureStore({
   reducer,
-  preloadedState:
-    typeof window === 'undefined' ? undefined : window.APP_INITIAL_STATE,
+  preloadedState: typeof window === 'undefined' ? undefined : window.APP_INITIAL_STATE,
 })
 
 export type RootState = ReturnType<typeof reducer>
