@@ -20,4 +20,9 @@ export default defineConfig({
     format: 'cjs',
   },
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 })
