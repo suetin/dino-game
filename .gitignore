@@ -5,6 +5,13 @@ node_modules/
 dist
 tmp
 *.log
-packages/client/tsconfig.server.tsbuildinfo
-packages/client/server/index.d.ts
-packages/client/server/index.js
+# Скомпилированные JS файлы (тот самый server/index.js)
+**/server/index.js
+**/*.tsbuildinfo
+
+# Если клиент тоже собирает что-то внутри себя
+packages/client/dist/
+packages/server/dist/
+
+# Системные файлы
+.DS_Store

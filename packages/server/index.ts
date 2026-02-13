@@ -1,32 +1,38 @@
+import 'reflect-metadata'
 import dotenv from 'dotenv'
+import express, { Request, Response } from 'express'
 import cors from 'cors'
+
+import { connectDB } from './db'
+import { topicRouter } from './routes/topicRouter'
+import { commentRouter } from './routes/commentRouter'
+
 dotenv.config()
 
-import express from 'express'
-import { createClientAndConnect } from './db'
-
 const app = express()
-app.use(cors())
 const port = Number(process.env.SERVER_PORT) || 3001
 
-createClientAndConnect()
+app.use(cors())
+app.use(express.json())
 
-app.get('/friends', (_, res) => {
-  res.json([
-    { name: 'Саша', secondName: 'Панов' },
-    { name: 'Лёша', secondName: 'Садовников' },
-    { name: 'Серёжа', secondName: 'Иванов' },
-  ])
+app.use('/api/forum/topics', topicRouter)
+app.use('/api/forum/comments', commentRouter)
+
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ status: 'Forum API is working' })
 })
 
-app.get('/user', (_, res) => {
-  res.json({ name: '</script>Степа', secondName: 'Степанов' })
-})
+const start = async () => {
+  try {
+    await connectDB()
 
-app.get('/', (_, res) => {
-  res.json('👋 Howdy from the server :)')
-})
+    app.listen(port, () => {
+      console.log(`Server listening on port ${port}`)
+    })
+  } catch (error) {
+    console.error('Failed to start server:', error)
+    process.exit(1)
+  }
+}
 
-app.listen(port, () => {
-  console.log(`  ➜ 🎸 Server is listening on port: ${port}`)
-})
+start()
