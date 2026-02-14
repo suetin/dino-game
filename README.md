@@ -236,6 +236,32 @@ Shadcn - https://ui.shadcn.com/docs/components
 
 Есть список компонентов и инструкции по их установке и использованию у каждого.
 
+## API
+### Пользователь
+
+1. Получение пользователя:
+
+GET /api/auth/user
+- Ожидает: куки с токеном/сессией
+- Возвращает: JSON с объектом User (id, name, second_name, ...)
+
+2. Login:
+
+POST /api/auth/signin
+- Тело: { login, password }.
+- Возвращает: 200 OK (и устанавливает куки).
+
+3. Register:
+
+POST /api/auth/signup
+- Тело: { name, second_name, login, email, password, phone }.
+- Возвращает: 200 OK (или id пользователя) и устанавливает куки.
+
+4. Logout:
+
+POST /api/auth/logout
+- Возвращает: 200 OK (и удаляет куки).
+
 ## Ой, ничего не работает :(
 
 Откройте issue — разберёмся.
