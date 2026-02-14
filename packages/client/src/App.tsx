@@ -10,7 +10,7 @@ const App = () => {
       {user ? (
         <div>
           <p>{user.name}</p>
-          <p>{user.second_name}</p>
+          <p>{user.secondName}</p>
         </div>
       ) : (
         <p>Пользователь не найден!</p>

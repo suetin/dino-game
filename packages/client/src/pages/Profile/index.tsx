@@ -20,7 +20,7 @@ export const ProfilePage = () => {
       {user ? (
         <div>
           <p>Имя: {user.name}</p>
-          <p>Фамилия: {user.second_name}</p>
+          <p>Фамилия: {user.secondName}</p>
         </div>
       ) : (
         <p>Загрузка...</p>
