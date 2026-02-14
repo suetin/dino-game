@@ -1,26 +1,22 @@
 .dino-page {
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
   gap: 12px;
-  padding: 16px 0 24px;
+  padding: 8px 0 0;
 }
 
 .dino-canvas-wrap {
+  position: relative;
   display: flex;
-  justify-content: center;
+  flex: 1;
+  min-height: 0;
 }
 
 .dino-canvas {
-  border: 2px solid #2f2f2f;
+  display: block;
+  border: 0;
   background: #f7f5f0;
   width: 100%;
-  max-width: 800px;
-  height: auto;
-}
-
-.dino-help {
-  text-align: center;
-  color: #3b3b3b;
-  font-family: monospace;
-  margin: 0;
+  height: 100%;
 }
