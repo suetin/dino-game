@@ -1,169 +1,132 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
+import { SERVER_HOST } from '@/constants'
 
 export interface User {
-  id: number
   name: string
-  second_name: string
-  display_name: string | null
-  login: string
-  email: string
-  phone: string
-  avatar: string | null
-}
-
-export interface LoginRequest {
-  login: string
-  password: string
-}
-
-export interface RegisterRequest {
-  name: string
-  second_name: string
-  login: string
-  email: string
-  password: string
-  phone: string
+  secondName: string
 }
 
 export interface UserState {
   data: User | null
   isLoading: boolean
-  error: string | null
+  authError: string | null
 }
 
 const initialState: UserState = {
   data: null,
   isLoading: false,
-  error: null,
+  authError: null,
 }
 
-// --- MOCK API (Заглушки) ---
-
-const MOCK_USER: User = {
-  id: 1,
-  name: 'Степа',
-  second_name: 'Степанов',
-  display_name: 'Stepa',
-  login: 'stepa',
-  email: 'stepa@example.com',
-  phone: '89000000000',
-  avatar: null,
-}
-
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-export const fetchUserThunk = createAsyncThunk<User>(
-  'user/fetchUser',
-  async (_, { rejectWithValue }) => {
-    await wait(500)
-
-    const isAuth = localStorage.getItem('isAuth') === 'true'
-
-    if (isAuth) {
-      return MOCK_USER
-    }
-
-    return rejectWithValue('Не авторизован')
+export const fetchUserThunk = createAsyncThunk('user/fetchUserThunk', async () => {
+  const url = `${SERVER_HOST}/user`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || `Ошибка ${res.status}`)
   }
-)
+  return res.json()
+})
 
-export const loginThunk = createAsyncThunk<void, LoginRequest>(
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+
+export const loginThunk = createAsyncThunk(
   'user/login',
-  async (data, { dispatch, rejectWithValue }) => {
-    await wait(1000)
-
-    if (data.login === 'error') {
-      return rejectWithValue('Неверный логин или пароль')
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return rejectWithValue(data.message || `Ошибка входа ${res.status}`)
     }
-
-    localStorage.setItem('isAuth', 'true')
-    await dispatch(fetchUserThunk())
+    return data as User
   }
 )
 
-export const registerThunk = createAsyncThunk<void, RegisterRequest>(
+export interface RegisterPayload {
+  email: string
+  password: string
+  name: string
+  secondName: string
+}
+
+export const registerThunk = createAsyncThunk(
   'user/register',
-  async (data, { dispatch, rejectWithValue }) => {
-    await wait(1000)
-
-    if (data.login === 'error') {
-      return rejectWithValue('Пользователь уже существует')
+  async (payload: RegisterPayload, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return rejectWithValue(data.message || `Ошибка регистрации ${res.status}`)
     }
-
-    localStorage.setItem('isAuth', 'true')
-    await dispatch(fetchUserThunk())
+    return data as User
   }
 )
 
 export const logoutThunk = createAsyncThunk('user/logout', async () => {
-  await wait(500)
-  localStorage.removeItem('isAuth')
+  await fetch(`${SERVER_HOST}/auth/logout`, { method: 'POST' })
 })
 
 export const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    clearError: state => {
-      state.error = null
+    clearAuthError(state) {
+      state.authError = null
     },
   },
   extraReducers: builder => {
-    // Fetch User
     builder
       .addCase(fetchUserThunk.pending, state => {
         state.isLoading = true
-        state.error = null
       })
-      .addCase(fetchUserThunk.fulfilled, (state, action) => {
-        state.data = action.payload
+      .addCase(fetchUserThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
         state.isLoading = false
+        state.authError = null
       })
       .addCase(fetchUserThunk.rejected, state => {
         state.isLoading = false
-        state.data = null
       })
-
-    // Login
-    builder
       .addCase(loginThunk.pending, state => {
-        state.isLoading = true
-        state.error = null
+        state.authError = null
       })
-      .addCase(loginThunk.fulfilled, state => {
-        state.isLoading = false
+      .addCase(loginThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
+        state.authError = null
       })
       .addCase(loginThunk.rejected, (state, action) => {
-        state.isLoading = false
-        state.error = action.payload as string
+        state.authError = (action.payload as string) || action.error.message || 'Ошибка входа'
       })
-
-    // Register
-    builder
       .addCase(registerThunk.pending, state => {
-        state.isLoading = true
-        state.error = null
+        state.authError = null
       })
-      .addCase(registerThunk.fulfilled, state => {
-        state.isLoading = false
+      .addCase(registerThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
+        state.authError = null
       })
       .addCase(registerThunk.rejected, (state, action) => {
-        state.isLoading = false
-        state.error = action.payload as string
+        state.authError = (action.payload as string) || action.error.message || 'Ошибка регистрации'
       })
-
-    // Logout
-    builder.addCase(logoutThunk.fulfilled, state => {
-      state.data = null
-    })
+      .addCase(logoutThunk.fulfilled, state => {
+        state.data = null
+      })
   },
 })
 
-export const { clearError } = userSlice.actions
+export const { clearAuthError } = userSlice.actions
 
 export const selectUser = (state: RootState) => state.user.data
-export const selectUserLoading = (state: RootState) => state.user.isLoading
-export const selectUserError = (state: RootState) => state.user.error
+export const selectAuthError = (state: RootState) => state.user.authError
 
 export default userSlice.reducer
