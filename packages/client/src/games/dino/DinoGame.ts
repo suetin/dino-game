@@ -30,8 +30,8 @@ import {
 import { Cactus, createCactus, createDino, Dino } from './entities'
 import { createInputState } from './input'
 import mitt, { Emitter } from 'mitt'
-import dinoSpriteUrl from '../../assets/dino_sprite.png'
-import cactusSpriteUrl from '../../assets/cactus_1.png'
+import dinoSpriteUrl from '../../assets/images/dino_sprite.png'
+import cactusSpriteUrl from '../../assets/images/cactus_1.png'
 
 type DinoGameEvents = {
   score: number
