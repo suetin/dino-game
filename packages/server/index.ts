@@ -1,17 +1,16 @@
-import dotenv from 'dotenv'
+import './loadEnv'
+import 'reflect-metadata'
+import express, { Request, Response } from 'express'
 import cors from 'cors'
-dotenv.config()
-
-import express from 'express'
-import { createClientAndConnect } from './db'
 
 const app = express()
-app.use(cors())
 const port = Number(process.env.SERVER_PORT) || 3001
+const skipDB = process.env.SKIP_DB === 'true'
 
-createClientAndConnect()
+app.use(cors())
+app.use(express.json())
 
-app.get('/friends', (_, res) => {
+app.get('/friends', (_req: Request, res: Response) => {
   res.json([
     { name: 'Саша', secondName: 'Панов' },
     { name: 'Лёша', secondName: 'Садовников' },
@@ -19,14 +18,54 @@ app.get('/friends', (_, res) => {
   ])
 })
 
-app.get('/user', (_, res) => {
-  res.json({ name: '</script>Степа', secondName: 'Степанов' })
+app.get('/user', (_req: Request, res: Response) => {
+  res.json({ name: 'Степа', secondName: 'Степанов' })
 })
 
-app.get('/', (_, res) => {
+// Авторизация и регистрация (мок для Issue #3)
+app.post('/auth/login', (req: Request, res: Response) => {
+  const { email, password } = req.body || {}
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email и пароль обязательны' })
+  }
+  // Мок: любой email/пароль — возвращаем пользователя
+  return res.json({ name: 'Степа', secondName: 'Степанов' })
+})
+
+app.post('/auth/register', (req: Request, res: Response) => {
+  const { email, password, name, secondName } = req.body || {}
+  if (!email || !password || !name || !secondName) {
+    return res.status(400).json({ message: 'Заполните все поля: email, пароль, имя, фамилия' })
+  }
+  // Мок: создаём пользователя из переданных данных
+  return res.status(201).json({ name: String(name).trim(), secondName: String(secondName).trim() })
+})
+
+app.get('/', (_req: Request, res: Response) => {
   res.json('👋 Howdy from the server :)')
 })
 
-app.listen(port, () => {
-  console.log(`  ➜ 🎸 Server is listening on port: ${port}`)
-})
+const start = async () => {
+  try {
+    if (!skipDB) {
+      const { connectDB } = await import('./db')
+      const { topicRouter } = await import('./routes/topicRouter')
+      const { commentRouter } = await import('./routes/commentRouter')
+      app.use('/api/forum/topics', topicRouter)
+      app.use('/api/forum/comments', commentRouter)
+      await connectDB()
+      console.log('  ➜ Database connected')
+    } else {
+      console.log('  ➜ Running without database (SKIP_DB=true)')
+    }
+
+    app.listen(port, () => {
+      console.log(`  ➜  Server is listening on port: ${port}`)
+    })
+  } catch (error) {
+    console.error('Failed to start server:', error)
+    process.exit(1)
+  }
+}
+
+start()
