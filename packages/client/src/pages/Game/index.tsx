@@ -160,7 +160,7 @@ export const GamePage = () => {
   }, [])
 
   return (
-    <WrapperContent className="max-w-[600px] items-center justify-start text-center">
+    <WrapperContent className="w-full self-stretch min-h-0 items-stretch justify-start text-center">
       <PageMeta title="Dino Game" description="Дино" />
       <div className="dino-page">
         <div ref={canvasWrapRef} className="dino-canvas-wrap">
