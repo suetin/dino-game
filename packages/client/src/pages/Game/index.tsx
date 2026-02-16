@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { usePage } from '@/hooks/usePage'
 import { DinoGame } from '@/games/dino/DinoGame'
 import { GAME_HEIGHT, GAME_WIDTH } from '@/games/dino/constants'
+import { getDinoGameThemeTokens } from '@/games/dino/theme'
 import '../../styles/DinoGame.css'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
+import { useSelector } from '@/store'
+import { selectIsDarkMode } from '@/slices/themeSlice'
 
 const MIN_CANVAS_WIDTH = 320
 const MIN_CANVAS_HEIGHT = 240
@@ -32,8 +35,12 @@ const isTypingTarget = (target: EventTarget | null) => {
 }
 
 export const GamePage = () => {
+  const isDarkMode = useSelector(selectIsDarkMode)
+  const gameTheme = useMemo(() => getDinoGameThemeTokens(isDarkMode), [isDarkMode])
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasWrapRef = useRef<HTMLDivElement | null>(null)
+  const gameRef = useRef<DinoGame | null>(null)
+  const initialThemeRef = useRef(gameTheme)
 
   usePage({ initPage: initGamePage })
 
@@ -58,7 +65,9 @@ export const GamePage = () => {
     const game = new DinoGame(ctx, {
       width: initialSize.width,
       height: initialSize.height,
+      theme: initialThemeRef.current,
     })
+    gameRef.current = game
     game.renderStartHint()
 
     let hasStarted = false
@@ -152,12 +161,17 @@ export const GamePage = () => {
 
     return () => {
       game.stop()
+      gameRef.current = null
       resizeObserver.disconnect()
       canvas.removeEventListener('pointerdown', handlePrimaryAction)
       window.removeEventListener('keydown', onKeyDown)
       game.off('gameover', onGameOver)
     }
   }, [])
+
+  useEffect(() => {
+    gameRef.current?.setTheme(gameTheme)
+  }, [gameTheme])
 
   return (
     <WrapperContent className="w-full self-stretch min-h-0 items-stretch justify-start text-center">

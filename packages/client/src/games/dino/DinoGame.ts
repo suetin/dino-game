@@ -23,7 +23,6 @@ import {
   GAME_WIDTH,
   GRAVITY,
   JUMP_VELOCITY,
-  UI_TEXT_COLOR,
   UI_TEXT_SCALE,
   WORLD_SPEED,
 } from './constants'
@@ -32,6 +31,7 @@ import { createInputState } from './input'
 import mitt, { Emitter } from 'mitt'
 import dinoSpriteUrl from '../../assets/images/dino_sprite.png'
 import cactusSpriteUrl from '../../assets/images/cactus_1.png'
+import { DINO_GAME_LIGHT_THEME, DinoGameThemeTokens } from './theme'
 
 type DinoGameEvents = {
   score: number
@@ -48,6 +48,7 @@ type Rect = {
 export type DinoGameOptions = {
   width?: number
   height?: number
+  theme?: DinoGameThemeTokens
 }
 
 export class DinoGame {
@@ -74,6 +75,7 @@ export class DinoGame {
 
   private runAnimationElapsed = 0
   private runFrameCursor = 0
+  private theme: DinoGameThemeTokens = DINO_GAME_LIGHT_THEME
 
   constructor(ctx: CanvasRenderingContext2D, options: DinoGameOptions = {}) {
     this.ctx = ctx
@@ -84,6 +86,7 @@ export class DinoGame {
     this.cactus = createCactus(this.width + 200, this.getGroundY())
 
     this.setupSprites()
+    this.setTheme(options.theme ?? DINO_GAME_LIGHT_THEME)
   }
 
   public start() {
@@ -125,6 +128,16 @@ export class DinoGame {
 
   public requestJump() {
     this.input.jumpRequested = true
+  }
+
+  public setTheme(theme: DinoGameThemeTokens) {
+    const isSameTheme = this.theme.mode === theme.mode
+
+    this.theme = theme
+
+    if (!this.isRunning && !isSameTheme) {
+      this.renderStartHint()
+    }
   }
 
   public renderStartHint() {
@@ -297,10 +310,10 @@ export class DinoGame {
     const ctx = this.ctx
 
     ctx.clearRect(0, 0, this.width, this.height)
-    ctx.fillStyle = '#f7f5f0'
+    ctx.fillStyle = this.theme.backgroundColor
     ctx.fillRect(0, 0, this.width, this.height)
 
-    ctx.strokeStyle = '#3b3b3b'
+    ctx.strokeStyle = this.theme.groundColor
     ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo(0, groundY)
@@ -311,7 +324,7 @@ export class DinoGame {
   private renderHud() {
     const ctx = this.ctx
 
-    ctx.fillStyle = UI_TEXT_COLOR
+    ctx.fillStyle = this.theme.uiTextColor
     ctx.font = `${16 * UI_TEXT_SCALE}px monospace`
     ctx.fillText(`Очки: ${Math.floor(this.score)}`, 16, 24 * UI_TEXT_SCALE)
   }
@@ -320,7 +333,7 @@ export class DinoGame {
     const ctx = this.ctx
 
     if (this.isGameOver) {
-      ctx.fillStyle = UI_TEXT_COLOR
+      ctx.fillStyle = this.theme.uiTextColor
       ctx.textAlign = 'center'
       ctx.font = `${24 * UI_TEXT_SCALE}px monospace`
       ctx.fillText('Конец игры', this.width / 2, this.height / 2)
@@ -334,7 +347,7 @@ export class DinoGame {
       return
     }
 
-    ctx.fillStyle = UI_TEXT_COLOR
+    ctx.fillStyle = this.theme.uiTextColor
     ctx.textAlign = 'center'
     ctx.font = `${14 * UI_TEXT_SCALE}px monospace`
     ctx.fillText('Кликни или нажми Пробел', this.width / 2, this.height / 2)
@@ -370,14 +383,11 @@ export class DinoGame {
   }
 
   private renderDino() {
-    const ctx = this.ctx
-
     if (!this.isDinoSpriteReady) {
-      ctx.fillStyle = '#2f2f2f'
-      ctx.fillRect(this.dino.position.x, this.dino.position.y, DINO_WIDTH, DINO_HEIGHT)
       return
     }
 
+    const ctx = this.ctx
     const frameIndex = this.getCurrentDinoFrameIndex()
     const sourceX = DINO_SPRITE_SOURCE_X
     const sourceY = DINO_SPRITE_FIRST_FRAME_Y + frameIndex * DINO_SPRITE_FRAME_STRIDE_Y
@@ -409,19 +419,11 @@ export class DinoGame {
   }
 
   private renderCactus() {
-    const ctx = this.ctx
-
     if (!this.isCactusSpriteReady) {
-      ctx.fillStyle = '#0e8a5a'
-      ctx.fillRect(
-        this.cactus.position.x,
-        this.cactus.position.y,
-        this.cactus.width,
-        this.cactus.height
-      )
       return
     }
 
+    const ctx = this.ctx
     ctx.save()
     ctx.imageSmoothingEnabled = false
     ctx.drawImage(
