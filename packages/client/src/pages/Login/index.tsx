@@ -18,7 +18,7 @@ export const LoginPage = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true })
+      navigate('/game', { replace: true })
     }
   }, [user, navigate])
   useEffect(() => {

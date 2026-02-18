@@ -1,6 +1,7 @@
 import { AppDispatch, RootState } from './store'
 
 import { Layout } from './components/Layout'
+import { GameLayout } from './components/GameLayout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { MainPage } from './pages/Main'
 import { initGamePage, GamePage } from './pages/Game'
@@ -53,11 +54,6 @@ export const routes = [
             fetchData: initProfilePage,
           },
           {
-            path: 'game',
-            Component: GamePage,
-            fetchData: initGamePage,
-          },
-          {
             path: 'leaderboard',
             Component: LeaderboardPage,
           },
@@ -71,6 +67,22 @@ export const routes = [
         path: '*',
         Component: NotFoundPage,
         fetchData: initNotFoundPage,
+      },
+    ],
+  },
+  {
+    Component: ProtectedRoute,
+    children: [
+      {
+        path: 'game',
+        Component: GameLayout,
+        children: [
+          {
+            index: true,
+            Component: GamePage,
+            fetchData: initGamePage,
+          },
+        ],
       },
     ],
   },

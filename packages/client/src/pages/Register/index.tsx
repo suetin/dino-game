@@ -32,7 +32,7 @@ export const RegisterPage = () => {
   }>({})
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true })
+      navigate('/game', { replace: true })
     }
   }, [user, navigate])
   useEffect(() => {

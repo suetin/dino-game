@@ -1,17 +1,9 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Outlet } from 'react-router-dom'
 import { Header } from '../Header'
 import { Footer } from '../Footer'
-import { useDispatch } from '@/store'
-import { initTheme } from '@/slices/themeSlice'
 
 export const Layout = () => {
-  const dispatch = useDispatch()
-
-  useEffect(() => {
-    dispatch(initTheme())
-  }, [dispatch])
-
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300">
       <Header />
