@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Moon, Sun, Menu } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Moon, Sun, Menu, LogOut } from 'lucide-react'
 import { useDispatch, useSelector } from '@/store'
 import { selectIsDarkMode, toggleTheme } from '@/slices/themeSlice'
+import { selectUser, logoutThunk } from '@/slices/userSlice'
 import logoHeaderImg from '@/assets/images/logo_header.png'
 import { MENU_ITEMS, HOME_ITEM } from '@/config/menu'
 import {
@@ -19,11 +20,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 
 export const Header = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const isDarkMode = useSelector(selectIsDarkMode)
+  const user = useSelector(selectUser)
   const location = useLocation()
 
   const handleSetTheme = (targetIsDark: boolean) => {
@@ -32,7 +36,11 @@ export const Header = () => {
     }
   }
 
-  // Генерируем карту имен страниц из конфига
+  const handleLogout = async () => {
+    await dispatch(logoutThunk())
+    navigate('/')
+  }
+
   const pageNameMap = useMemo(() => {
     const map: Record<string, string> = {
       [HOME_ITEM.path]: HOME_ITEM.title,
@@ -62,6 +70,18 @@ export const Header = () => {
                   </NavigationMenuLink>
                 </NavigationMenuItem>
               ))}
+
+              {user && (
+                <NavigationMenuItem>
+                  <Button
+                    variant="ghost"
+                    className={navigationMenuTriggerStyle()}
+                    onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Выйти
+                  </Button>
+                </NavigationMenuItem>
+              )}
             </NavigationMenuList>
           </NavigationMenu>
         </div>
@@ -83,6 +103,18 @@ export const Header = () => {
                   <Link to={item.path}>{item.title}</Link>
                 </DropdownMenuItem>
               ))}
+
+              {user && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Выйти
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

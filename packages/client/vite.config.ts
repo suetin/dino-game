@@ -18,6 +18,7 @@ export default defineConfig({
   },
   ssr: {
     format: 'cjs',
+    noExternal: ['mitt', '@radix-ui/react-avatar', '@radix-ui/react-separator'],
   },
   plugins: [react()],
   resolve: {

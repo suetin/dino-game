@@ -1,115 +1,158 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
-import { defaultUser, initialState, LS_KEY } from '@/entities/profile/profile.api.mock'
+import { SERVER_HOST } from '@/constants'
 
-type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
+// --- Types ---
+
+export type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
 
 export interface User {
-  id: string
+  id?: string
   name: string
   secondName: string
   phone?: string
   avatarUrl?: string | null
   email?: string
   displayName?: string
+  login?: string
 }
 
 export interface UserState {
   data: User | null
   isLoading: boolean
+  authError: string | null
   error: string | null
 
   updateStatus: RequestStatus
   avatarStatus: RequestStatus
 }
 
-function sleep(ms: number) {
-  return new Promise(r => setTimeout(r, ms))
+const initialState: UserState = {
+  data: null,
+  isLoading: false,
+  authError: null,
+  error: null,
+  updateStatus: 'idle',
+  avatarStatus: 'idle',
 }
 
-const isBrowser = typeof window !== 'undefined'
+// --- Thunks ---
 
-function loadUser(): User {
-  if (!isBrowser) return defaultUser
-
-  const raw = localStorage.getItem(LS_KEY)
-  if (!raw) return defaultUser
-
-  try {
-    return { ...defaultUser, ...(JSON.parse(raw) as Partial<User>) }
-  } catch {
-    return defaultUser
+// 1. FETCH USER
+export const fetchUserThunk = createAsyncThunk('user/fetchUserThunk', async () => {
+  const url = `${SERVER_HOST}/user`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || `Ошибка ${res.status}`)
   }
-}
-
-function saveUser(user: User) {
-  if (!isBrowser) return
-  localStorage.setItem(LS_KEY, JSON.stringify(user))
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
-    reader.onload = () => resolve(String(reader.result))
-    reader.readAsDataURL(file)
-  })
-}
-
-//
-// FETCH USER (mock)
-//
-export const fetchUserThunk = createAsyncThunk<User>('user/fetchUserThunk', async () => {
-  await sleep(500)
-  const user = loadUser()
-  saveUser(user)
-  return user
+  return res.json() as Promise<User>
 })
 
-//
-// UPDATE USER (mock)
-//
+// 2. LOGIN
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+export const loginThunk = createAsyncThunk(
+  'user/login',
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return rejectWithValue(data.message || `Ошибка входа ${res.status}`)
+    }
+    return data as User
+  }
+)
+
+// 3. REGISTER
+export interface RegisterPayload {
+  email: string
+  password: string
+  name: string
+  secondName: string
+}
+export const registerThunk = createAsyncThunk(
+  'user/register',
+  async (payload: RegisterPayload, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return rejectWithValue(data.message || `Ошибка регистрации ${res.status}`)
+    }
+    return data as User
+  }
+)
+
+// 4. LOGOUT
+export const logoutThunk = createAsyncThunk('user/logout', async () => {
+  await fetch(`${SERVER_HOST}/auth/logout`, { method: 'POST' })
+})
+
+// 5. UPDATE USER
 export const updateUserThunk = createAsyncThunk<
   User,
   { name: string; secondName: string; phone: string; email: string; displayName: string }
 >('user/updateUserThunk', async payload => {
-  await sleep(600)
-  const current = loadUser()
-  const updated: User = { ...current, ...payload }
-  saveUser(updated)
-  return updated
+  const res = await fetch(`${SERVER_HOST}/user/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    throw new Error('Ошибка обновления профиля')
+  }
+  return res.json() as Promise<User>
 })
 
-//
-// UPLOAD AVATAR (mock)
-//
+// 6. UPLOAD AVATAR
 export const uploadAvatarThunk = createAsyncThunk<User, File>(
   'user/uploadAvatarThunk',
   async file => {
-    await sleep(700)
-    const current = loadUser()
-    const avatarUrl = await fileToDataUrl(file)
-    const updated: User = { ...current, avatarUrl }
-    saveUser(updated)
-    return updated
+    const formData = new FormData()
+    formData.append('avatar', file)
+
+    // Внимание: для FormData не нужно ставить Content-Type header вручную, браузер сам поставит boundary
+    const res = await fetch(`${SERVER_HOST}/user/profile/avatar`, {
+      method: 'PUT',
+      body: formData,
+    })
+    if (!res.ok) {
+      throw new Error('Ошибка загрузки аватара')
+    }
+    return res.json() as Promise<User>
   }
 )
 
-//
-// DELETE AVATAR (mock)
-//
+// 7. DELETE AVATAR
 export const deleteAvatarThunk = createAsyncThunk<User>('user/deleteAvatarThunk', async () => {
-  await sleep(400)
-  const current = loadUser()
-  const updated: User = { ...current, avatarUrl: null }
-  saveUser(updated)
-  return updated
+  const res = await fetch(`${SERVER_HOST}/user/profile/avatar`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    throw new Error('Ошибка удаления аватара')
+  }
+  return res.json() as Promise<User>
 })
+
+// --- Slice ---
 
 export const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
+    clearAuthError(state) {
+      state.authError = null
+    },
     resetUserStatuses(state) {
       state.updateStatus = 'idle'
       state.avatarStatus = 'idle'
@@ -121,15 +164,43 @@ export const userSlice = createSlice({
       // FETCH
       .addCase(fetchUserThunk.pending, state => {
         state.isLoading = true
-        state.error = null
       })
       .addCase(fetchUserThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
         state.data = payload
         state.isLoading = false
+        state.authError = null
       })
-      .addCase(fetchUserThunk.rejected, (state, action) => {
+      .addCase(fetchUserThunk.rejected, state => {
         state.isLoading = false
-        state.error = action.error.message ?? 'Ошибка загрузки'
+      })
+
+      // LOGIN
+      .addCase(loginThunk.pending, state => {
+        state.authError = null
+      })
+      .addCase(loginThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
+        state.authError = null
+      })
+      .addCase(loginThunk.rejected, (state, action) => {
+        state.authError = (action.payload as string) || action.error.message || 'Ошибка входа'
+      })
+
+      // REGISTER
+      .addCase(registerThunk.pending, state => {
+        state.authError = null
+      })
+      .addCase(registerThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
+        state.authError = null
+      })
+      .addCase(registerThunk.rejected, (state, action) => {
+        state.authError = (action.payload as string) || action.error.message || 'Ошибка регистрации'
+      })
+
+      // LOGOUT
+      .addCase(logoutThunk.fulfilled, state => {
+        state.data = null
       })
 
       // UPDATE
@@ -176,9 +247,10 @@ export const userSlice = createSlice({
   },
 })
 
-export const { resetUserStatuses } = userSlice.actions
+export const { clearAuthError, resetUserStatuses } = userSlice.actions
 
 export const selectUser = (state: RootState) => state.user.data
+export const selectAuthError = (state: RootState) => state.user.authError
 export const selectUserLoading = (state: RootState) => state.user.isLoading
 export const selectUserError = (state: RootState) => state.user.error
 export const selectUserUpdateStatus = (state: RootState) => state.user.updateStatus

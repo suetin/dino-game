@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -54,6 +53,7 @@ async function createServer() {
         app.use(express_1.default.static(path_1.default.join(clientPath, 'dist/client'), { index: false }));
     }
     app.get('*', async (req, res, next) => {
+        var _a;
         const url = req.originalUrl;
         try {
             // Получаем файл client/index.html который мы правили ранее
@@ -73,13 +73,13 @@ async function createServer() {
                 // Получаем путь до сбилдженого модуля клиента, чтобы не тащить средства сборки клиента на сервер
                 const pathToServer = path_1.default.join(clientPath, 'dist/server/entry-server.js');
                 // Импортируем этот модуль и вызываем с инишл стейтом
-                render = (await Promise.resolve().then(() => __importStar(require(pathToServer)))).render;
+                render = (await (_a = pathToServer, Promise.resolve().then(() => __importStar(require(_a))))).render;
             }
             // Получаем HTML-строку из JSX
-            const { html: appHtml, initialState, helmet, styleTags } = await render(req);
+            const { html: appHtml, initialState, helmet } = await render(req);
             // Заменяем комментарий на сгенерированную HTML-строку
             const html = template
-                .replace('<!--ssr-styles-->', styleTags)
+                .replace('<!--ssr-styles-->', '')
                 .replace(`<!--ssr-helmet-->`, `${helmet.meta.toString()} ${helmet.title.toString()} ${helmet.link.toString()}`)
                 .replace(`<!--ssr-outlet-->`, appHtml)
                 .replace(`<!--ssr-initial-state-->`, `<script>window.APP_INITIAL_STATE = ${(0, serialize_javascript_1.default)(initialState, {
