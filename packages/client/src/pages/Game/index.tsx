@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { usePage } from '@/hooks/usePage'
+import { useDispatch, useSelector } from '@/store'
+import {
+  selectGamePhase,
+  selectLastScore,
+  startGame,
+  finishGame,
+  playAgain,
+  goToMenu,
+} from '@/slices/gameSlice'
+import { selectIsDarkMode } from '@/slices/themeSlice'
 import { DinoGame } from '@/games/dino/DinoGame'
 import { GAME_HEIGHT, GAME_WIDTH } from '@/games/dino/constants'
 import { getDinoGameThemeTokens } from '@/games/dino/theme'
-import '../../styles/DinoGame.css'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
-import { useSelector } from '@/store'
-import { selectIsDarkMode } from '@/slices/themeSlice'
+import { StartScreen } from './StartScreen'
+import { GameOverScreen } from './GameOverScreen'
+import '../../styles/DinoGame.css'
 
 const MIN_CANVAS_WIDTH = 320
 const MIN_CANVAS_HEIGHT = 240
@@ -24,7 +34,6 @@ const isTypingTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
     return false
   }
-
   const tagName = target.tagName
   return (
     tagName === 'INPUT' ||
@@ -34,7 +43,8 @@ const isTypingTarget = (target: EventTarget | null) => {
   )
 }
 
-export const GamePage = () => {
+const PlayingView = () => {
+  const dispatch = useDispatch()
   const isDarkMode = useSelector(selectIsDarkMode)
   const gameTheme = useMemo(() => getDinoGameThemeTokens(isDarkMode), [isDarkMode])
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -42,9 +52,8 @@ export const GamePage = () => {
   const gameRef = useRef<DinoGame | null>(null)
   const initialThemeRef = useRef(gameTheme)
 
-  usePage({ initPage: initGamePage })
-
   useEffect(() => {
+    let cancelled = false
     const canvas = canvasRef.current
     const canvasWrap = canvasWrapRef.current
     if (!canvas || !canvasWrap) return
@@ -68,67 +77,25 @@ export const GamePage = () => {
       theme: initialThemeRef.current,
     })
     gameRef.current = game
-    game.renderStartHint()
-
-    let hasStarted = false
-    let isGameOver = false
 
     const onGameOver = (score: number) => {
-      isGameOver = true
-      console.log('Игра закончилась. Очки:', score)
+      if (!cancelled) dispatch(finishGame(score))
     }
 
-    const startGame = () => {
-      hasStarted = true
-      console.log('Игра началась')
-      game.start()
-    }
-
-    const restartGame = () => {
-      isGameOver = false
-      game.reset()
-      game.start()
-    }
+    game.on('gameover', onGameOver)
+    game.start()
 
     const requestJump = () => {
-      if (!hasStarted || isGameOver) return
       game.requestJump()
     }
 
-    const handlePrimaryAction = () => {
-      if (!hasStarted) {
-        startGame()
-        return
-      }
-      if (isGameOver) {
-        restartGame()
-        return
-      }
-      requestJump()
-    }
-
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isTypingTarget(event.target)) {
-        return
-      }
-
-      if (event.repeat) {
-        return
-      }
-
+      if (isTypingTarget(event.target) || event.repeat) return
       switch (event.code) {
         case 'Space':
-          event.preventDefault()
-          handlePrimaryAction()
-          return
         case 'ArrowUp':
           event.preventDefault()
           requestJump()
-          return
-        case 'KeyR':
-          if (isGameOver) {
-            restartGame()
-          }
           return
         default:
           return
@@ -139,48 +106,79 @@ export const GamePage = () => {
       const nextSize = getCanvasSize(canvasWrap)
       const nextWidth = nextSize.width
       const nextHeight = nextSize.height
-
-      if (canvas.clientWidth === nextWidth && canvas.clientHeight === nextHeight) {
-        return
-      }
-
+      if (canvas.clientWidth === nextWidth && canvas.clientHeight === nextHeight) return
       applyCanvasResolution(nextWidth, nextHeight)
       game.resize(nextWidth, nextHeight)
-      if (!hasStarted) {
-        game.renderStartHint()
-      }
     }
 
     const resizeObserver = new ResizeObserver(syncCanvasSize)
     resizeObserver.observe(canvasWrap)
     syncCanvasSize()
 
-    canvas.addEventListener('pointerdown', handlePrimaryAction)
+    canvas.addEventListener('pointerdown', requestJump)
     window.addEventListener('keydown', onKeyDown)
-    game.on('gameover', onGameOver)
 
     return () => {
+      cancelled = true
       game.stop()
       gameRef.current = null
       resizeObserver.disconnect()
-      canvas.removeEventListener('pointerdown', handlePrimaryAction)
+      canvas.removeEventListener('pointerdown', requestJump)
       window.removeEventListener('keydown', onKeyDown)
       game.off('gameover', onGameOver)
     }
-  }, [])
+  }, [dispatch])
 
   useEffect(() => {
     gameRef.current?.setTheme(gameTheme)
   }, [gameTheme])
 
   return (
+    <div className="dino-page">
+      <div ref={canvasWrapRef} className="dino-canvas-wrap">
+        <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} className="dino-canvas" />
+      </div>
+    </div>
+  )
+}
+
+export const GamePage = () => {
+  const dispatch = useDispatch()
+  const phase = useSelector(selectGamePhase)
+  const lastScore = useSelector(selectLastScore)
+
+  usePage({ initPage: initGamePage })
+
+  if (phase === 'start') {
+    return (
+      <WrapperContent className="w-full self-stretch min-h-0 items-stretch justify-start text-center">
+        <PageMeta title="Dino Game" description="Дино" />
+        <div className="dino-page">
+          <StartScreen onStart={() => dispatch(startGame())} />
+        </div>
+      </WrapperContent>
+    )
+  }
+
+  if (phase === 'game_over') {
+    return (
+      <WrapperContent className="w-full self-stretch min-h-0 items-stretch justify-start text-center">
+        <PageMeta title="Dino Game" description="Дино" />
+        <div className="dino-page">
+          <GameOverScreen
+            score={lastScore}
+            onPlayAgain={() => dispatch(playAgain())}
+            onGoToMenu={() => dispatch(goToMenu())}
+          />
+        </div>
+      </WrapperContent>
+    )
+  }
+
+  return (
     <WrapperContent className="w-full self-stretch min-h-0 items-stretch justify-start text-center">
       <PageMeta title="Dino Game" description="Дино" />
-      <div className="dino-page">
-        <div ref={canvasWrapRef} className="dino-canvas-wrap">
-          <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} className="dino-canvas" />
-        </div>
-      </div>
+      <PlayingView />
     </WrapperContent>
   )
 }
