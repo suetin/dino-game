@@ -29,7 +29,7 @@ export interface UserState {
 
 const initialState: UserState = {
   data: null,
-  isLoading: false,
+  isLoading: true,
   authError: null,
   error: null,
   updateStatus: 'idle',
@@ -39,15 +39,27 @@ const initialState: UserState = {
 // --- Thunks ---
 
 // 1. FETCH USER
-export const fetchUserThunk = createAsyncThunk('user/fetchUserThunk', async () => {
-  const url = `${SERVER_HOST}/user`
-  const res = await fetch(url)
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text || `Ошибка ${res.status}`)
+export const fetchUserThunk = createAsyncThunk(
+  'user/fetchUserThunk',
+  async (_, { rejectWithValue }) => {
+    const url = `${SERVER_HOST}/user`
+    const res = await fetch(url)
+    if (!res.ok) {
+      const text = await res.text()
+      // Если 401, то это не ошибка, а просто неавторизованный пользователь
+      if (res.status === 401) {
+        return rejectWithValue('Unauthorized')
+      }
+      throw new Error(text || `Ошибка ${res.status}`)
+    }
+    const user = (await res.json()) as User
+    // Проверяем, что в ответе есть id пользователя
+    if (!user || !user.id) {
+      return rejectWithValue('User not found')
+    }
+    return user
   }
-  return res.json() as Promise<User>
-})
+)
 
 // 2. LOGIN
 export interface LoginCredentials {
@@ -170,8 +182,13 @@ export const userSlice = createSlice({
         state.isLoading = false
         state.authError = null
       })
-      .addCase(fetchUserThunk.rejected, state => {
+      .addCase(fetchUserThunk.rejected, (state, action) => {
         state.isLoading = false
+        state.data = null // Убедимся, что данные пользователя очищены
+        // Не устанавливаем authError, если это просто отсутствие сессии
+        if (action.payload !== 'Unauthorized' && action.payload !== 'User not found') {
+          state.authError = (action.payload as string) || action.error.message || 'Ошибка'
+        }
       })
 
       // LOGIN

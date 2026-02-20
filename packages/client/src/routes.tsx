@@ -1,8 +1,6 @@
-import { AppDispatch, RootState } from './store'
-
 import { Layout } from './components/Layout'
 import { GameLayout } from './components/GameLayout'
-import { ProtectedRoute } from './components/ProtectedRoute'
+import { RequireAuth } from './hocs/RequireAuth'
 import { MainPage } from './pages/Main'
 import { initGamePage, GamePage } from './pages/Game'
 import { initNotFoundPage, NotFoundPage } from './pages/NotFound'
@@ -12,6 +10,8 @@ import { initProfilePage, ProfilePage } from './pages/Profile'
 import { LeaderboardPage } from './pages/Leaderboard'
 import { ForumPage } from './pages/Forum'
 import { Error500Page } from './pages/Error500'
+import { ROUTES } from './config/routes'
+import { AppDispatch, RootState } from './store'
 
 export type PageInitContext = {
   clientToken?: string
@@ -25,61 +25,60 @@ export type PageInitArgs = {
 
 export const routes = [
   {
-    path: '/',
-    Component: Layout,
+    path: ROUTES.HOME,
+    element: <Layout />,
     children: [
       {
         index: true,
-        Component: MainPage,
+        element: <MainPage />,
       },
       {
-        path: 'login',
-        Component: LoginPage,
+        path: ROUTES.LOGIN,
+        element: <LoginPage />,
       },
       {
-        path: 'register',
-        Component: RegisterPage,
+        path: ROUTES.REGISTER,
+        element: <RegisterPage />,
       },
       {
-        path: '500',
-        Component: Error500Page,
+        path: ROUTES.ERROR_500,
+        element: <Error500Page />,
       },
-      // Защищенные маршруты
       {
-        Component: ProtectedRoute,
+        element: <RequireAuth />,
         children: [
           {
-            path: 'profile',
-            Component: ProfilePage,
+            path: ROUTES.PROFILE,
+            element: <ProfilePage />,
             fetchData: initProfilePage,
           },
           {
-            path: 'leaderboard',
-            Component: LeaderboardPage,
+            path: ROUTES.LEADERBOARD,
+            element: <LeaderboardPage />,
           },
           {
-            path: 'forum',
-            Component: ForumPage,
+            path: ROUTES.FORUM,
+            element: <ForumPage />,
           },
         ],
       },
       {
         path: '*',
-        Component: NotFoundPage,
+        element: <NotFoundPage />,
         fetchData: initNotFoundPage,
       },
     ],
   },
   {
-    Component: ProtectedRoute,
+    element: <RequireAuth />,
     children: [
       {
-        path: 'game',
-        Component: GameLayout,
+        path: ROUTES.GAME,
+        element: <GameLayout />,
         children: [
           {
             index: true,
-            Component: GamePage,
+            element: <GamePage />,
             fetchData: initGamePage,
           },
         ],
