@@ -45,12 +45,13 @@ export const fetchUserThunk = createAsyncThunk(
     const url = `${SERVER_HOST}/user`
     const res = await fetch(url)
     if (!res.ok) {
-      const text = await res.text()
       // Если 401, то это не ошибка, а просто неавторизованный пользователь
       if (res.status === 401) {
         return rejectWithValue('Unauthorized')
       }
-      throw new Error(text || `Ошибка ${res.status}`)
+      // Попытаемся прочитать тело ответа как JSON для получения причины ошибки
+      const errorData = await res.json().catch(() => ({}))
+      return rejectWithValue(errorData.reason || `Ошибка ${res.status}`)
     }
     const user = (await res.json()) as User
     // Проверяем, что в ответе есть id пользователя
@@ -184,10 +185,13 @@ export const userSlice = createSlice({
       })
       .addCase(fetchUserThunk.rejected, (state, action) => {
         state.isLoading = false
-        state.data = null // Убедимся, что данные пользователя очищены
-        // Не устанавливаем authError, если это просто отсутствие сессии
+        if (action.payload === 'Unauthorized' || action.payload === 'User not found') {
+          state.data = null
+        }
+
         if (action.payload !== 'Unauthorized' && action.payload !== 'User not found') {
-          state.authError = (action.payload as string) || action.error.message || 'Ошибка'
+          state.error =
+            (action.payload as string) || action.error.message || 'Ошибка загрузки данных'
         }
       })
 
