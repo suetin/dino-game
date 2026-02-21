@@ -42,8 +42,8 @@ export const BIRD_ANIMATION_FPS = 8
 export const BIRD_SPRITE_WIDTH = 92
 export const BIRD_SPRITE_FRAME_HEIGHT = 78
 
-export const BIRD_WIDTH = 92
-export const BIRD_HEIGHT = 78
+export const BIRD_WIDTH = 35
+export const BIRD_HEIGHT = 30
 
 export const BIRD_SPEED_MULTIPLIER = 1.3
 

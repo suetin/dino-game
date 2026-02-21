@@ -43,6 +43,7 @@ import {
   GRAVITY,
   INVINCIBLE_TIME,
   JUMP_VELOCITY,
+  SPRITE_SCALE,
   START_LIVES,
   UI_TEXT_SCALE,
   WORLD_SPEED,
@@ -152,7 +153,9 @@ export class DinoGame {
     this.dino = createDino(this.getGroundY())
     const id = this.pickCactusVariantIndex()
     const v = this.cactusVariants[id]
-    this.obstacles = [createCactusObstacle(this.width + 200, this.getGroundY(), id, v.w, v.h)]
+    this.obstacles = [
+      createCactusObstacle(this.width + 200, this.getGroundY(), id, v.w, v.h, this.scale),
+    ]
     this.nextObstacleIn = 0.8
 
     this.groundImg = new Image()
@@ -230,12 +233,16 @@ export class DinoGame {
   }
 
   private readonly cactusVariants = [
-    { w: 85, h: 150, weight: 1 },
-    { w: 60, h: 110, weight: 3 },
-    { w: 100, h: 120, weight: 1 },
-    { w: 50, h: 85, weight: 2 },
-    { w: 60, h: 102, weight: 3 },
+    { w: 40, h: 60, weight: 1 },
+    { w: 30, h: 50, weight: 3 },
+    { w: 50, h: 60, weight: 1 },
+    { w: 25, h: 40, weight: 2 },
+    { w: 30, h: 45, weight: 3 },
   ]
+
+  private get scale() {
+    return SPRITE_SCALE
+  }
 
   private setupSprites() {
     this.loadSprite(this.dinoSprite, dinoSpriteUrl, () => {
@@ -319,7 +326,7 @@ export class DinoGame {
     const groundY = this.getGroundY()
     const id = this.pickCactusVariantIndex()
     const v = this.cactusVariants[id]
-    this.obstacles = [createCactusObstacle(this.width + 200, groundY, id, v.w, v.h)]
+    this.obstacles = [createCactusObstacle(this.width + 200, groundY, id, v.w, v.h, this.scale)]
     this.nextObstacleIn = 0.8
     this.birdAnimationElapsed = 0
     this.birdFrameCursor = 0
@@ -395,7 +402,7 @@ export class DinoGame {
     const x = this.width + 20
     const y = CLOUD_Y_MIN + Math.random() * (CLOUD_Y_MAX - CLOUD_Y_MIN)
 
-    const scale = 0.6 + Math.random() * 0.8
+    const scale = 5 + Math.random() * 0.8
 
     this.clouds.push({
       position: { x, y },
@@ -430,8 +437,8 @@ export class DinoGame {
 
     const next =
       canSpawnBird && roll < 0.35
-        ? createBirdObstacle(spawnX, groundY)
-        : createCactusObstacle(spawnX, groundY, id, v.w, v.h)
+        ? createBirdObstacle(spawnX, groundY, this.scale)
+        : createCactusObstacle(spawnX, groundY, id, v.w, v.h, this.scale)
 
     this.obstacles.push(next)
     this.nextObstacleIn = 1.1 + Math.random() * 0.9
@@ -635,7 +642,7 @@ export class DinoGame {
     this.renderScore()
 
     if (this.isHeartReady) {
-      const size = 40
+      const size = 20 * this.scale
       const gap = 6
 
       for (let i = 0; i < this.lives; i++) {
@@ -656,7 +663,7 @@ export class DinoGame {
 
     const scoreStr = Math.floor(this.score).toString().padStart(5, '0')
 
-    const scale = 1.5
+    const scale = 0.7 * this.scale
     const digitSpacing = 3
     const digitW = DIGIT_WIDTH * scale
     const digitH = DIGIT_HEIGHT * scale
@@ -718,8 +725,8 @@ export class DinoGame {
         this.cloudSprite,
         0,
         0,
-        this.cloudSprite.width,
-        this.cloudSprite.height,
+        this.cloudSprite.width * this.scale,
+        this.cloudSprite.height * this.scale,
         c.position.x,
         c.position.y,
         w,

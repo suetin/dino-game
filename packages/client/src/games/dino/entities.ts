@@ -42,9 +42,12 @@ export function createCactusObstacle(
   x: number,
   groundY: number,
   variant: number,
-  width: number,
-  height: number
+  cWidth: number,
+  cHeight: number,
+  scale: number
 ): CactusObstacle {
+  const width = cWidth * scale
+  const height = cHeight * scale
   return {
     kind: 'cactus',
     variant,
@@ -54,14 +57,14 @@ export function createCactusObstacle(
   }
 }
 
-export function createBirdObstacle(x: number, groundY: number): BirdObstacle {
-  const levels = [150, 190, 240]
+export function createBirdObstacle(x: number, groundY: number, scale: number): BirdObstacle {
+  const levels = [190, 220, 250]
   const gap = levels[Math.floor(Math.random() * levels.length)]
 
   return {
     kind: 'bird',
     position: { x, y: groundY - BIRD_HEIGHT - gap },
-    width: BIRD_WIDTH,
-    height: BIRD_HEIGHT,
+    width: BIRD_WIDTH * scale,
+    height: BIRD_HEIGHT * scale,
   }
 }
