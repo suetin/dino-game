@@ -241,11 +241,11 @@ export class DinoGame {
   }
 
   private readonly cactusVariants = [
-    { w: 40, h: 60, weight: 1 },
-    { w: 30, h: 50, weight: 3 },
-    { w: 50, h: 60, weight: 1 },
-    { w: 25, h: 40, weight: 2 },
+    { w: 40, h: 55, weight: 1 },
     { w: 30, h: 45, weight: 3 },
+    { w: 50, h: 55, weight: 1 },
+    { w: 25, h: 35, weight: 2 },
+    { w: 30, h: 40, weight: 3 },
   ]
 
   private get scale() {
@@ -427,6 +427,8 @@ export class DinoGame {
       const speed = o.kind === 'bird' ? WORLD_SPEED * BIRD_SPEED_MULTIPLIER : WORLD_SPEED
       o.position.x -= speed * delta
     }
+
+    this.obstacles = this.obstacles.filter(o => o.position.x + o.width > 0)
 
     this.nextObstacleIn -= delta
     if (this.nextObstacleIn > 0) return
