@@ -21,7 +21,10 @@ export type CactusObstacle = ObstacleBase & {
   variant: number
 }
 
-export type BirdObstacle = ObstacleBase & { kind: 'bird' }
+export type BirdObstacle = ObstacleBase & {
+  kind: 'bird'
+  gap: number
+}
 
 export type Obstacle = CactusObstacle | BirdObstacle
 
@@ -63,6 +66,7 @@ export function createBirdObstacle(x: number, groundY: number, scale: number): B
 
   return {
     kind: 'bird',
+    gap,
     position: { x, y: groundY - BIRD_HEIGHT - gap },
     width: BIRD_WIDTH * scale,
     height: BIRD_HEIGHT * scale,

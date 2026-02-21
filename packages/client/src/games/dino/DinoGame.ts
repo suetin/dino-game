@@ -198,6 +198,14 @@ export class DinoGame {
       this.dino.velocityY = 0
       this.dino.isOnGround = true
     }
+
+    for (const o of this.obstacles) {
+      if (o.kind === 'cactus') {
+        o.position.y = newGroundY - o.height
+      } else {
+        o.position.y = newGroundY - o.height - o.gap
+      }
+    }
   }
 
   public requestJump() {
