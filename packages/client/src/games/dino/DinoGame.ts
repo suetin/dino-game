@@ -1,9 +1,28 @@
 import {
+  BIRD_ANIMATION_FPS,
+  BIRD_FRAME_COUNT,
+  BIRD_HITBOX_INSET_BOTTOM,
+  BIRD_HITBOX_INSET_LEFT,
+  BIRD_HITBOX_INSET_RIGHT,
+  BIRD_HITBOX_INSET_TOP,
+  BIRD_SPEED_MULTIPLIER,
+  BIRD_SPRITE_FRAME_HEIGHT,
+  BIRD_SPRITE_WIDTH,
   CACTUS_HITBOX_INSET_BOTTOM,
   CACTUS_HITBOX_INSET_LEFT,
   CACTUS_HITBOX_INSET_RIGHT,
   CACTUS_HITBOX_INSET_TOP,
+  CLOUD_HEIGHT,
+  CLOUD_SPAWN_MAX,
+  CLOUD_SPAWN_MIN,
+  CLOUD_SPEED,
+  CLOUD_WIDTH,
+  CLOUD_Y_MAX,
+  CLOUD_Y_MIN,
+  DIGIT_HEIGHT,
+  DIGIT_WIDTH,
   DINO_ANIMATION_FPS,
+  DINO_BLINK_FPS,
   DINO_DEAD_FRAME_INDEX,
   DINO_DEAD_SPRITE_SOURCE_WIDTH,
   DINO_HEIGHT,
@@ -22,16 +41,35 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   GRAVITY,
+  INVINCIBLE_TIME,
   JUMP_VELOCITY,
+  START_LIVES,
   UI_TEXT_SCALE,
   WORLD_SPEED,
 } from './constants'
-import { Cactus, createCactus, createDino, Dino } from './entities'
+import {
+  Cloud,
+  createBirdObstacle,
+  createCactusObstacle,
+  createDino,
+  Dino,
+  Obstacle,
+} from './entities'
 import { createInputState } from './input'
 import mitt, { Emitter } from 'mitt'
-import dinoSpriteUrl from '../../assets/images/dino_sprite.png'
-import cactusSpriteUrl from '../../assets/images/cactus_1.png'
 import { DINO_GAME_LIGHT_THEME, DinoGameThemeTokens } from './theme'
+
+import dinoSpriteUrl from '../../assets/images/dino/dino_sprite.png'
+import cactus1SpriteUrl from '../../assets/images/obstacles/green_cactus.png'
+import cactus2SpriteUrl from '../../assets/images/obstacles/big_cactus.png'
+import cactus3SpriteUrl from '../../assets/images/obstacles/grouped_cactus.png'
+import cactus4SpriteUrl from '../../assets/images/obstacles/medium_cactus.png'
+import cactus5SpriteUrl from '../../assets/images/obstacles/small_cactus.png'
+import groundLongSrc from '../../assets/images/background/road.png'
+import cloudSpriteUrl from '../../assets/images/background/cloud.png'
+import birdSpriteUrl from '../../assets/images/obstacles/bird.png'
+import heartUrl from '../../assets/images/HUD/heart.png'
+import digitsUrl from '../../assets/images/HUD/numbers.png'
 
 type DinoGameEvents = {
   score: number
@@ -62,7 +100,6 @@ export class DinoGame {
   private rafId = 0
 
   private dino: Dino
-  private cactus: Cactus
   private score = 0
   private isRunning = false
   private isGameOver = false
@@ -70,11 +107,41 @@ export class DinoGame {
 
   private readonly dinoSprite = new Image()
   private isDinoSpriteReady = false
-  private readonly cactusSprite = new Image()
-  private isCactusSpriteReady = false
+  private cactusSprites: HTMLImageElement[] = []
+  private isCactusSpritesReady = false
 
   private runAnimationElapsed = 0
   private runFrameCursor = 0
+
+  private obstacles: Obstacle[] = []
+  private nextObstacleIn = 0
+
+  private groundImg: HTMLImageElement | null = null
+  private groundOffset = 0
+
+  private readonly birdSprite = new Image()
+  private isBirdSpriteReady = false
+
+  private birdAnimationElapsed = 0
+  private birdFrameCursor = 0
+
+  private clouds: Cloud[] = []
+  private nextCloudIn = 0
+
+  private readonly cloudSprite = new Image()
+  private isCloudSpriteReady = false
+
+  private readonly heartSprite = new Image()
+  private isHeartReady = false
+
+  private lives = START_LIVES
+  private invincibleLeft = 0
+  private blinkElapsed = 0
+  private blinkVisible = true
+
+  private readonly digitsSprite = new Image()
+  private isDigitsReady = false
+
   private theme: DinoGameThemeTokens = DINO_GAME_LIGHT_THEME
 
   constructor(ctx: CanvasRenderingContext2D, options: DinoGameOptions = {}) {
@@ -83,7 +150,13 @@ export class DinoGame {
     this.height = options.height ?? GAME_HEIGHT
 
     this.dino = createDino(this.getGroundY())
-    this.cactus = createCactus(this.width + 200, this.getGroundY())
+    const id = this.pickCactusVariantIndex()
+    const v = this.cactusVariants[id]
+    this.obstacles = [createCactusObstacle(this.width + 200, this.getGroundY(), id, v.w, v.h)]
+    this.nextObstacleIn = 0.8
+
+    this.groundImg = new Image()
+    this.groundImg.src = groundLongSrc
 
     this.setupSprites()
     this.setTheme(options.theme ?? DINO_GAME_LIGHT_THEME)
@@ -122,8 +195,6 @@ export class DinoGame {
       this.dino.velocityY = 0
       this.dino.isOnGround = true
     }
-
-    this.cactus.position.y = newGroundY - this.cactus.height
   }
 
   public requestJump() {
@@ -158,13 +229,53 @@ export class DinoGame {
     this.emitter.off(type, handler)
   }
 
+  private readonly cactusVariants = [
+    { w: 85, h: 150, weight: 1 },
+    { w: 60, h: 110, weight: 3 },
+    { w: 100, h: 120, weight: 1 },
+    { w: 50, h: 85, weight: 2 },
+    { w: 60, h: 102, weight: 3 },
+  ]
+
   private setupSprites() {
     this.loadSprite(this.dinoSprite, dinoSpriteUrl, () => {
       this.isDinoSpriteReady = true
     })
 
-    this.loadSprite(this.cactusSprite, cactusSpriteUrl, () => {
-      this.isCactusSpriteReady = true
+    const cactusUrls = [
+      cactus1SpriteUrl,
+      cactus2SpriteUrl,
+      cactus3SpriteUrl,
+      cactus4SpriteUrl,
+      cactus5SpriteUrl,
+    ]
+
+    let loaded = 0
+    this.cactusSprites = cactusUrls.map(url => {
+      const img = new Image()
+      this.loadSprite(img, url, () => {
+        loaded += 1
+        if (loaded === cactusUrls.length) {
+          this.isCactusSpritesReady = true
+        }
+      })
+      return img
+    })
+
+    this.loadSprite(this.birdSprite, birdSpriteUrl, () => {
+      this.isBirdSpriteReady = true
+    })
+
+    this.loadSprite(this.cloudSprite, cloudSpriteUrl, () => {
+      this.isCloudSpriteReady = true
+    })
+
+    this.loadSprite(this.heartSprite, heartUrl, () => {
+      this.isHeartReady = true
+    })
+
+    this.loadSprite(this.digitsSprite, digitsUrl, () => {
+      this.isDigitsReady = true
     })
   }
 
@@ -184,11 +295,34 @@ export class DinoGame {
   private resetWorld() {
     const groundY = this.getGroundY()
     this.dino = createDino(groundY)
-    this.cactus = createCactus(this.width + 200, groundY)
+    this.resetGameInfo()
+    this.resetObstacles()
+    this.resetBackground()
+  }
+
+  private resetGameInfo() {
     this.score = 0
     this.isGameOver = false
     this.runAnimationElapsed = 0
     this.runFrameCursor = 0
+    this.lives = START_LIVES
+    this.invincibleLeft = 0
+    this.blinkElapsed = 0
+    this.blinkVisible = true
+  }
+  private resetBackground() {
+    this.clouds = []
+    this.nextCloudIn = 0.2
+  }
+
+  private resetObstacles() {
+    const groundY = this.getGroundY()
+    const id = this.pickCactusVariantIndex()
+    const v = this.cactusVariants[id]
+    this.obstacles = [createCactusObstacle(this.width + 200, groundY, id, v.w, v.h)]
+    this.nextObstacleIn = 0.8
+    this.birdAnimationElapsed = 0
+    this.birdFrameCursor = 0
   }
 
   private loop = (time: number) => {
@@ -211,13 +345,15 @@ export class DinoGame {
     this.updateScore(delta)
     this.consumeJumpInput()
     this.updateDino(delta, groundY)
-    this.updateCactus(delta, groundY)
+    this.updateObstacles(delta, groundY)
+    this.updateBirdAnimation(delta)
+    this.updateClouds(delta)
 
-    if (this.checkCollision()) {
-      this.isGameOver = true
-      this.emitter.emit('gameover', Math.floor(this.score))
-      return
+    if (this.groundImg?.width) {
+      this.groundOffset += WORLD_SPEED * delta
     }
+
+    this.handleCollision(delta)
 
     this.updateRunAnimation(delta)
   }
@@ -246,28 +382,131 @@ export class DinoGame {
     }
   }
 
-  private updateCactus(delta: number, groundY: number) {
-    this.cactus.position.x -= WORLD_SPEED * delta
+  private updateClouds(delta: number) {
+    for (const c of this.clouds) {
+      c.position.x -= CLOUD_SPEED * delta
+    }
 
-    if (this.cactus.position.x + this.cactus.width >= 0) {
+    this.clouds = this.clouds.filter(c => c.position.x + c.width > 0)
+
+    this.nextCloudIn -= delta
+    if (this.nextCloudIn > 0) return
+
+    const x = this.width + 20
+    const y = CLOUD_Y_MIN + Math.random() * (CLOUD_Y_MAX - CLOUD_Y_MIN)
+
+    const scale = 0.6 + Math.random() * 0.8
+
+    this.clouds.push({
+      position: { x, y },
+      width: CLOUD_WIDTH,
+      height: CLOUD_HEIGHT,
+      scale,
+    })
+
+    this.nextCloudIn = CLOUD_SPAWN_MIN + Math.random() * (CLOUD_SPAWN_MAX - CLOUD_SPAWN_MIN)
+  }
+
+  private updateObstacles(delta: number, groundY: number) {
+    for (const o of this.obstacles) {
+      const speed = o.kind === 'bird' ? WORLD_SPEED * BIRD_SPEED_MULTIPLIER : WORLD_SPEED
+      o.position.x -= speed * delta
+    }
+
+    this.nextObstacleIn -= delta
+    if (this.nextObstacleIn > 0) return
+
+    const MIN_GAP_PX = 280
+    const last = this.obstacles[this.obstacles.length - 1]
+    if (last && last.position.x > this.width - MIN_GAP_PX) {
       return
     }
 
-    this.cactus = createCactus(this.width + 150 + Math.random() * 200, groundY)
+    const spawnX = this.width + 150 + Math.random() * 200
+    const canSpawnBird = this.score >= 30
+    const roll = Math.random()
+    const id = this.pickCactusVariantIndex()
+    const v = this.cactusVariants[id]
+
+    const next =
+      canSpawnBird && roll < 0.35
+        ? createBirdObstacle(spawnX, groundY)
+        : createCactusObstacle(spawnX, groundY, id, v.w, v.h)
+
+    this.obstacles.push(next)
+    this.nextObstacleIn = 1.1 + Math.random() * 0.9
     this.score += 1
     this.emitScore()
   }
 
+  private pickCactusVariantIndex() {
+    const total = this.cactusVariants.reduce((s, v) => s + v.weight, 0)
+    let r = Math.random() * total
+    for (let i = 0; i < this.cactusVariants.length; i++) {
+      r -= this.cactusVariants[i].weight
+      if (r <= 0) return i
+    }
+    return 0
+  }
+
+  private updateBirdAnimation(delta: number) {
+    this.birdAnimationElapsed += delta
+    const frameDuration = 1 / BIRD_ANIMATION_FPS
+
+    while (this.birdAnimationElapsed >= frameDuration) {
+      this.birdAnimationElapsed -= frameDuration
+      this.birdFrameCursor = (this.birdFrameCursor + 1) % BIRD_FRAME_COUNT
+    }
+  }
+
   private checkCollision() {
     const dino = this.getDinoHitbox()
-    const cactus = this.getCactusHitbox()
 
-    return (
-      dino.left < cactus.right &&
-      dino.right > cactus.left &&
-      dino.top < cactus.bottom &&
-      dino.bottom > cactus.top
-    )
+    for (const o of this.obstacles) {
+      const ob = this.getObstacleHitbox(o)
+      const hit =
+        dino.left < ob.right && dino.right > ob.left && dino.top < ob.bottom && dino.bottom > ob.top
+
+      if (hit) return true
+    }
+
+    return false
+  }
+
+  private handleCollision(delta: number) {
+    if (this.isGameOver) return
+
+    if (this.invincibleLeft > 0) {
+      this.invincibleLeft = Math.max(0, this.invincibleLeft - delta)
+
+      this.blinkElapsed += delta
+      const blinkStep = 1 / DINO_BLINK_FPS
+
+      while (this.blinkElapsed >= blinkStep) {
+        this.blinkElapsed -= blinkStep
+        this.blinkVisible = !this.blinkVisible
+      }
+
+      if (this.invincibleLeft === 0) {
+        this.blinkVisible = true
+      }
+
+      return
+    }
+
+    if (!this.checkCollision()) return
+
+    this.lives -= 1
+
+    if (this.lives <= 0) {
+      this.isGameOver = true
+      this.emitter.emit('gameover', Math.floor(this.score))
+      return
+    }
+
+    this.invincibleLeft = INVINCIBLE_TIME
+    this.blinkElapsed = 0
+    this.blinkVisible = false
   }
 
   private getDinoHitbox(): Rect {
@@ -279,12 +518,21 @@ export class DinoGame {
     }
   }
 
-  private getCactusHitbox(): Rect {
+  private getObstacleHitbox(o: Obstacle): Rect {
+    if (o.kind === 'cactus') {
+      return {
+        left: o.position.x + o.width * CACTUS_HITBOX_INSET_LEFT,
+        right: o.position.x + o.width * (1 - CACTUS_HITBOX_INSET_RIGHT),
+        top: o.position.y + o.height * CACTUS_HITBOX_INSET_TOP,
+        bottom: o.position.y + o.height * (1 - CACTUS_HITBOX_INSET_BOTTOM),
+      }
+    }
+
     return {
-      left: this.cactus.position.x + this.cactus.width * CACTUS_HITBOX_INSET_LEFT,
-      right: this.cactus.position.x + this.cactus.width * (1 - CACTUS_HITBOX_INSET_RIGHT),
-      top: this.cactus.position.y + this.cactus.height * CACTUS_HITBOX_INSET_TOP,
-      bottom: this.cactus.position.y + this.cactus.height * (1 - CACTUS_HITBOX_INSET_BOTTOM),
+      left: o.position.x + o.width * BIRD_HITBOX_INSET_LEFT,
+      right: o.position.x + o.width * (1 - BIRD_HITBOX_INSET_RIGHT),
+      top: o.position.y + o.height * BIRD_HITBOX_INSET_TOP,
+      bottom: o.position.y + o.height * (1 - BIRD_HITBOX_INSET_BOTTOM),
     }
   }
 
@@ -300,8 +548,10 @@ export class DinoGame {
     const groundY = this.getGroundY()
 
     this.renderBackground(groundY)
+    this.renderClouds()
+    this.renderGround(groundY)
     this.renderDino()
-    this.renderCactus()
+    this.renderObstacles()
     this.renderHud()
     this.renderOverlay(showStartHint)
   }
@@ -312,21 +562,118 @@ export class DinoGame {
     ctx.clearRect(0, 0, this.width, this.height)
     ctx.fillStyle = this.theme.backgroundColor
     ctx.fillRect(0, 0, this.width, this.height)
+  }
 
-    ctx.strokeStyle = this.theme.groundColor
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(0, groundY)
-    ctx.lineTo(this.width, groundY)
-    ctx.stroke()
+  private renderGround(groundY: number) {
+    if (!this.ctx || !this.groundImg || !this.groundImg.width) return
+
+    const ctx = this.ctx
+    const img = this.groundImg
+
+    const imgW = img.width
+    const imgH = img.height
+
+    const offset = Math.floor(((this.groundOffset % imgW) + imgW) % imgW)
+
+    const y = Math.floor(groundY - imgH)
+
+    let x = -offset
+
+    while (x < this.width + imgW) {
+      ctx.drawImage(img, Math.floor(x), y)
+      x += imgW
+    }
+  }
+
+  private renderObstacles() {
+    const ctx = this.ctx
+    ctx.save()
+    ctx.imageSmoothingEnabled = false
+
+    for (const o of this.obstacles) {
+      if (o.kind === 'cactus') {
+        if (!this.isCactusSpritesReady) continue
+
+        const sprite = this.cactusSprites[o.variant] ?? this.cactusSprites[0]
+        ctx.drawImage(
+          sprite,
+          0,
+          0,
+          sprite.width,
+          sprite.height,
+          o.position.x,
+          o.position.y,
+          o.width,
+          o.height
+        )
+      } else {
+        if (!this.isBirdSpriteReady) continue
+        const frameIndex = this.birdFrameCursor
+        const sourceX = 0
+        const sourceY = frameIndex * BIRD_SPRITE_FRAME_HEIGHT
+
+        ctx.drawImage(
+          this.birdSprite,
+          sourceX,
+          sourceY,
+          BIRD_SPRITE_WIDTH,
+          BIRD_SPRITE_FRAME_HEIGHT,
+          o.position.x,
+          o.position.y,
+          o.width,
+          o.height
+        )
+      }
+    }
+
+    ctx.restore()
   }
 
   private renderHud() {
     const ctx = this.ctx
 
-    ctx.fillStyle = this.theme.uiTextColor
-    ctx.font = `${16 * UI_TEXT_SCALE}px monospace`
-    ctx.fillText(`Очки: ${Math.floor(this.score)}`, 16, 24 * UI_TEXT_SCALE)
+    this.renderScore()
+
+    if (this.isHeartReady) {
+      const size = 40
+      const gap = 6
+
+      for (let i = 0; i < this.lives; i++) {
+        const x = this.width - 16 - (size + gap) * (i + 1)
+        const y = 10
+
+        ctx.drawImage(this.heartSprite, x, y, size, size)
+      }
+    }
+  }
+
+  private renderScore() {
+    if (!this.isDigitsReady) return
+
+    const ctx = this.ctx
+    ctx.save()
+    ctx.imageSmoothingEnabled = false
+
+    const scoreStr = Math.floor(this.score).toString().padStart(5, '0')
+
+    const scale = 1.5
+    const digitSpacing = 3
+    const digitW = DIGIT_WIDTH * scale
+    const digitH = DIGIT_HEIGHT * scale
+
+    let x = 16
+    const y = 10
+
+    for (const char of scoreStr) {
+      const digit = Number(char)
+      const sourceX = digit * DIGIT_WIDTH
+
+      ctx.drawImage(this.digitsSprite, sourceX, 0, DIGIT_WIDTH, DIGIT_HEIGHT, x, y, digitW, digitH)
+
+      x += digitW + digitSpacing
+    }
+
+    ctx.restore()
   }
 
   private renderOverlay(showStartHint: boolean) {
@@ -352,6 +699,35 @@ export class DinoGame {
     ctx.font = `${14 * UI_TEXT_SCALE}px monospace`
     ctx.fillText('Кликни или нажми Пробел', this.width / 2, this.height / 2)
     ctx.textAlign = 'start'
+  }
+
+  private renderClouds() {
+    if (!this.isCloudSpriteReady) return
+
+    const ctx = this.ctx
+    ctx.save()
+
+    ctx.imageSmoothingEnabled = true
+
+    for (const c of this.clouds) {
+      const scale = c.scale ?? 1
+      const w = c.width * scale
+      const h = c.height * scale
+
+      ctx.drawImage(
+        this.cloudSprite,
+        0,
+        0,
+        this.cloudSprite.width,
+        this.cloudSprite.height,
+        c.position.x,
+        c.position.y,
+        w,
+        h
+      )
+    }
+
+    ctx.restore()
   }
 
   private getGroundY() {
@@ -383,7 +759,7 @@ export class DinoGame {
   }
 
   private renderDino() {
-    if (!this.isDinoSpriteReady) {
+    if (!this.isDinoSpriteReady || !this.blinkVisible) {
       return
     }
 
@@ -414,28 +790,6 @@ export class DinoGame {
       this.dino.position.y,
       DINO_WIDTH,
       DINO_HEIGHT
-    )
-    ctx.restore()
-  }
-
-  private renderCactus() {
-    if (!this.isCactusSpriteReady) {
-      return
-    }
-
-    const ctx = this.ctx
-    ctx.save()
-    ctx.imageSmoothingEnabled = false
-    ctx.drawImage(
-      this.cactusSprite,
-      0,
-      0,
-      this.cactusSprite.width,
-      this.cactusSprite.height,
-      this.cactus.position.x,
-      this.cactus.position.y,
-      this.cactus.width,
-      this.cactus.height
     )
     ctx.restore()
   }

@@ -35,3 +35,36 @@ export const CACTUS_HITBOX_INSET_BOTTOM = 0.02
 export const WORLD_SPEED = 460
 export const UI_TEXT_SCALE = 2
 export const UI_TEXT_COLOR = '#503a2c'
+
+export const BIRD_FRAME_COUNT = 2
+export const BIRD_ANIMATION_FPS = 8
+
+export const BIRD_SPRITE_WIDTH = 92
+export const BIRD_SPRITE_FRAME_HEIGHT = 78
+
+export const BIRD_WIDTH = 92
+export const BIRD_HEIGHT = 78
+
+export const BIRD_SPEED_MULTIPLIER = 1.3
+
+export const BIRD_HITBOX_INSET_LEFT = 0.15
+export const BIRD_HITBOX_INSET_RIGHT = 0.15
+export const BIRD_HITBOX_INSET_TOP = 0.2
+export const BIRD_HITBOX_INSET_BOTTOM = 0.2
+
+export const CLOUD_SPEED = WORLD_SPEED * 0.25
+export const CLOUD_SPAWN_MIN = 1.2
+export const CLOUD_SPAWN_MAX = 2.8
+
+export const CLOUD_WIDTH = 92
+export const CLOUD_HEIGHT = 27
+
+export const CLOUD_Y_MIN = 27
+export const CLOUD_Y_MAX = 140
+
+export const START_LIVES = 3
+export const INVINCIBLE_TIME = 1.0
+export const DINO_BLINK_FPS = 10
+
+export const DIGIT_WIDTH = 22
+export const DIGIT_HEIGHT = 42
