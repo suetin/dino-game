@@ -6,7 +6,7 @@ export function startServiceWorker() {
         .then(registration => {
           console.log('ServiceWorker registration successful with scope: ', registration.scope)
         })
-        .catch((error: string) => {
+        .catch((error: unknown) => {
           console.log('ServiceWorker registration failed: ', error)
         })
     })

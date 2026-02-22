@@ -59,18 +59,43 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(async () => {
-          // Если сети нет - пытаемся достать из кэша
           const cachedResponse = await caches.match(request);
           if (cachedResponse) {
             return cachedResponse;
           }
-
+          
           if (isApiUrl) {
              return new Response(JSON.stringify({ message: 'Нет подключения к интернету' }), {
                status: 503,
                statusText: 'Service Unavailable',
                headers: { 'Content-Type': 'application/json' }
              });
+          }
+
+          if (isHtml) {
+            return new Response(
+              `
+              <!DOCTYPE html>
+              <html lang="ru">
+                <head>
+                  <meta charset="UTF-8">
+                  <title>Вы оффлайн</title>
+                  <style>
+                    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #11121D}
+                    h1 { color: #EEF1FA; }
+                  </style>
+                </head>
+                <body>
+                  <h1>Нет подключения к интернету</h1>
+                  <p>Пожалуйста, проверьте ваше соединение и обновите страницу.</p>
+                </body>
+              </html>
+              `,
+              {
+                status: 200,
+                headers: { 'Content-Type': 'text/html' }
+              }
+            );
           }
         })
     );
