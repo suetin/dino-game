@@ -37,18 +37,54 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (!event.request.url.startsWith('http')) {
+  const { request } = event;
+
+  if (!request.url.startsWith('http')) {
+    return;
+  }
+
+  const isApiUrl = request.url.includes('/api/');
+  const isHtml = request.mode === 'navigate';
+
+  if (isApiUrl || isHtml) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(async () => {
+          // Если сети нет - пытаемся достать из кэша
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+
+          if (isApiUrl) {
+             return new Response(JSON.stringify({ message: 'Нет подключения к интернету' }), {
+               status: 503,
+               statusText: 'Service Unavailable',
+               headers: { 'Content-Type': 'application/json' }
+             });
+          }
+        })
+    );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request)
+    caches.match(request)
       .then(response => {
         if (response) {
           return response;
         }
 
-        const fetchRequest = event.request.clone();
+        const fetchRequest = request.clone();
         return fetch(fetchRequest)
           .then(response => {
             if (!response || response.status !== 200 || response.type !== 'basic') {
@@ -58,18 +94,9 @@ self.addEventListener('fetch', event => {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME)
               .then(cache => {
-                cache.put(event.request, responseToCache);
+                cache.put(request, responseToCache);
               });
             return response;
-          })
-          .catch(() => {
-            if (event.request.url.includes('/api/')) {
-               return new Response(JSON.stringify({ message: 'Нет подключения к интернету' }), {
-                 status: 503,
-                 statusText: 'Service Unavailable',
-                 headers: { 'Content-Type': 'application/json' }
-               });
-            }
           });
       })
   );
