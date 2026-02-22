@@ -5,11 +5,14 @@ import { Provider } from 'react-redux'
 import { store } from './store'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ThemeBootstrap } from './components/ThemeBootstrap'
+import { startServiceWorker } from './startServiceWorker'
 
 import { routes } from './routes'
 import './index.css'
 
 const router = createBrowserRouter(routes)
+
+startServiceWorker()
 
 ReactDOM.hydrateRoot(
   document.getElementById('root') as HTMLElement,
