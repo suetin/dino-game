@@ -138,7 +138,7 @@ export const ProfilePage = () => {
 
   return (
     <WrapperContent className="max-w-[600px] items-center justify-center text-center">
-      <PageMeta title="Профиль - Dino Game" description="Профиль пользователя" />
+      <PageMeta title="Профиль - Dino Game" description="Страница профиля пользователя" />
 
       {loading && !user && <p>Загрузка...</p>}
       {user && (
