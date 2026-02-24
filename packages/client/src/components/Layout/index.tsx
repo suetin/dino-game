@@ -1,9 +1,18 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Header } from '../Header'
 import { Footer } from '../Footer'
+import { useDispatch } from 'react-redux'
+import { fetchUserThunk } from '@/slices/userSlice'
 
 export const Layout = () => {
+  const dispatch = useDispatch()
+
+  useEffect(() => {
+    // Запускаем проверку пользователя при первой загрузке приложения
+    dispatch(fetchUserThunk())
+  }, [dispatch])
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300">
       <Header />

@@ -7,6 +7,7 @@ tmp
 *.log
 # Скомпилированные JS файлы (тот самый server/index.js)
 **/server/index.js
+**/client/tsconfig.server.tsbuildinfo
 **/*.tsbuildinfo
 
 # Если клиент тоже собирает что-то внутри себя

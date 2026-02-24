@@ -29,7 +29,7 @@ export interface UserState {
 
 const initialState: UserState = {
   data: null,
-  isLoading: false,
+  isLoading: true,
   authError: null,
   error: null,
   updateStatus: 'idle',
@@ -39,15 +39,28 @@ const initialState: UserState = {
 // --- Thunks ---
 
 // 1. FETCH USER
-export const fetchUserThunk = createAsyncThunk('user/fetchUserThunk', async () => {
-  const url = `${SERVER_HOST}/user`
-  const res = await fetch(url)
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text || `Ошибка ${res.status}`)
+export const fetchUserThunk = createAsyncThunk(
+  'user/fetchUserThunk',
+  async (_, { rejectWithValue }) => {
+    const url = `${SERVER_HOST}/user`
+    const res = await fetch(url)
+    if (!res.ok) {
+      // Если 401, то это не ошибка, а просто неавторизованный пользователь
+      if (res.status === 401) {
+        return rejectWithValue('Unauthorized')
+      }
+      // Попытаемся прочитать тело ответа как JSON для получения причины ошибки
+      const errorData = await res.json().catch(() => ({}))
+      return rejectWithValue(errorData.reason || `Ошибка ${res.status}`)
+    }
+    const user = (await res.json()) as User
+    // Проверяем, что в ответе есть id пользователя
+    if (!user || !user.id) {
+      return rejectWithValue('User not found')
+    }
+    return user
   }
-  return res.json() as Promise<User>
-})
+)
 
 // 2. LOGIN
 export interface LoginCredentials {
@@ -170,8 +183,16 @@ export const userSlice = createSlice({
         state.isLoading = false
         state.authError = null
       })
-      .addCase(fetchUserThunk.rejected, state => {
+      .addCase(fetchUserThunk.rejected, (state, action) => {
         state.isLoading = false
+        if (action.payload === 'Unauthorized' || action.payload === 'User not found') {
+          state.data = null
+        }
+
+        if (action.payload !== 'Unauthorized' && action.payload !== 'User not found') {
+          state.error =
+            (action.payload as string) || action.error.message || 'Ошибка загрузки данных'
+        }
       })
 
       // LOGIN
