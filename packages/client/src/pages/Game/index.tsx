@@ -8,6 +8,9 @@ import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { useSelector } from '@/store'
 import { selectIsDarkMode } from '@/slices/themeSlice'
+import { useFullscreen } from '@/hooks/useFullscreen'
+import { Button } from '@/components/ui/button'
+import { Maximize, Minimize } from 'lucide-react'
 
 const MIN_CANVAS_WIDTH = 320
 const MIN_CANVAS_HEIGHT = 240
@@ -39,8 +42,11 @@ export const GamePage = () => {
   const gameTheme = useMemo(() => getDinoGameThemeTokens(isDarkMode), [isDarkMode])
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasWrapRef = useRef<HTMLDivElement | null>(null)
+  const pageRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<DinoGame | null>(null)
   const initialThemeRef = useRef(gameTheme)
+
+  const { isFullscreen, toggleFullscreen } = useFullscreen(pageRef)
 
   usePage({ initPage: initGamePage })
 
@@ -176,7 +182,26 @@ export const GamePage = () => {
   return (
     <WrapperContent className="w-full self-stretch min-h-0 items-stretch justify-start text-center">
       <PageMeta title="Dino Game" description="Дино" />
-      <div className="dino-page">
+
+      <div ref={pageRef} className="dino-page relative group">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleFullscreen}
+          className="absolute top-6 left-1/2 -translate-x-1/2 z-10 gap-2 bg-background/80 backdrop-blur-sm">
+          {isFullscreen ? (
+            <>
+              <Minimize className="h-4 w-4" />
+              <span>Свернуть</span>
+            </>
+          ) : (
+            <>
+              <Maximize className="h-4 w-4" />
+              <span>Во весь экран</span>
+            </>
+          )}
+        </Button>
+
         <div ref={canvasWrapRef} className="dino-canvas-wrap">
           <canvas ref={canvasRef} width={GAME_WIDTH} height={GAME_HEIGHT} className="dino-canvas" />
         </div>
