@@ -60,9 +60,15 @@ export function createCactusObstacle(
   }
 }
 
-export function createBirdObstacle(x: number, groundY: number, scale: number): BirdObstacle {
+export function createBirdObstacle(
+  x: number,
+  groundY: number,
+  scale: number,
+  random: () => number = Math.random
+): BirdObstacle {
   const levels = [190, 220, 250]
-  const gap = levels[Math.floor(Math.random() * levels.length)]
+  const levelIndex = Math.min(levels.length - 1, Math.floor(random() * levels.length))
+  const gap = levels[levelIndex]
 
   return {
     kind: 'bird',
