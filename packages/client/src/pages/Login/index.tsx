@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from '@/store'
 import { loginThunk, selectUser, selectAuthError, clearAuthError } from '@/slices/userSlice'
 import { validateEmail, validatePassword } from '@/lib/validation'
@@ -8,22 +8,30 @@ import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ROUTES } from '@/config/routes'
+
 export const LoginPage = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useSelector(selectUser)
   const authError = useSelector(selectAuthError)
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+
   useEffect(() => {
     if (user) {
-      navigate('/game', { replace: true })
+      const from = location.state?.from?.pathname || ROUTES.PROFILE
+      navigate(from, { replace: true })
     }
-  }, [user, navigate])
+  }, [user, navigate, location.state])
+
   useEffect(() => {
     dispatch(clearAuthError())
   }, [dispatch])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const emailErr = validateEmail(email)
@@ -38,9 +46,12 @@ export const LoginPage = () => {
     setErrors({})
     dispatch(loginThunk({ email: email.trim(), password }))
   }
+
   if (user) {
+    // Пока происходит редирект, ничего не рендерим
     return null
   }
+
   return (
     <WrapperContent className="max-w-[600px] items-center justify-start text-center">
       <PageMeta title="Вход - Dino Game" description="Форма авторизации" />
@@ -89,7 +100,7 @@ export const LoginPage = () => {
       </form>
       <p className="mt-4 text-sm text-muted-foreground">
         Нет аккаунта?{' '}
-        <Link to="/register" className="text-primary underline underline-offset-2">
+        <Link to={ROUTES.REGISTER} className="text-primary underline underline-offset-2">
           Регистрация
         </Link>
       </p>
