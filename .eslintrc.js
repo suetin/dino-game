@@ -1,4 +1,5 @@
 module.exports = {
+  ignorePatterns: ['packages/server/dist/**', 'packages/client/server/index.js'],
   env: {
     browser: true,
     es2020: true,
