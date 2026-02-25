@@ -188,7 +188,7 @@ export const GamePage = () => {
           variant="outline"
           size="sm"
           onClick={toggleFullscreen}
-          className="absolute top-6 left-1/2 -translate-x-1/2 z-10 gap-2 bg-background/80 backdrop-blur-sm">
+          className="absolute top-6 left-1/2 -translate-x-1/2 z-10 gap-2 text-sm p-6 bg-border text-muted-foreground">
           {isFullscreen ? (
             <>
               <Minimize className="h-4 w-4" />
