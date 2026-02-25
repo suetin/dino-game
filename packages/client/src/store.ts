@@ -8,12 +8,10 @@ import { combineReducers } from 'redux'
 import { configureStore } from '@reduxjs/toolkit'
 
 import friendsReducer from './slices/friendsSlice'
+import gameReducer from './slices/gameSlice'
 import ssrReducer from './slices/ssrSlice'
 import userReducer from './slices/userSlice'
 import themeReducer from './slices/themeSlice'
-
-// Глобально декларируем в window наш ключик
-// и задаем ему тип такой же как у стейта в сторе
 declare global {
   interface Window {
     APP_INITIAL_STATE: RootState
@@ -22,6 +20,7 @@ declare global {
 
 export const reducer = combineReducers({
   friends: friendsReducer,
+  game: gameReducer,
   ssr: ssrReducer,
   user: userReducer,
   theme: themeReducer,
