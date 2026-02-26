@@ -14,8 +14,8 @@ const router = createBrowserRouter(routes)
 
 startServiceWorker()
 
-ReactDOM.hydrateRoot(
-  document.getElementById('root') as HTMLElement,
+const root = document.getElementById('root') as HTMLElement
+const app = (
   <Provider store={store}>
     <ThemeBootstrap />
     <ErrorBoundary>
@@ -23,3 +23,5 @@ ReactDOM.hydrateRoot(
     </ErrorBoundary>
   </Provider>
 )
+
+ReactDOM.hydrateRoot(root, import.meta.env.DEV ? <React.StrictMode>{app}</React.StrictMode> : app)
