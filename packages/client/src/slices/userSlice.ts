@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
-import { SERVER_HOST } from '@/constants'
+import { SERVER_HOST, REDIRECT_URI } from '@/constants'
 
 // --- Types ---
 
@@ -22,6 +22,7 @@ export interface UserState {
   isLoading: boolean
   authError: string | null
   error: string | null
+  serviceId: string | null
 
   updateStatus: RequestStatus
   avatarStatus: RequestStatus
@@ -32,8 +33,20 @@ const initialState: UserState = {
   isLoading: true,
   authError: null,
   error: null,
+  serviceId: null,
+
   updateStatus: 'idle',
   avatarStatus: 'idle',
+}
+
+const fetchOptions = {
+  credentials: 'include' as const,
+}
+
+const postJsonOptions = {
+  ...fetchOptions,
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
 }
 
 // --- Thunks ---
@@ -157,6 +170,42 @@ export const deleteAvatarThunk = createAsyncThunk<User>('user/deleteAvatarThunk'
   return res.json() as Promise<User>
 })
 
+export const fetchServiceIdThunk = createAsyncThunk<string>(
+  'user/fetchServiceId',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch(
+        `${SERVER_HOST}/oauth/yandex/service-id?redirect_uri=${REDIRECT_URI}`,
+        fetchOptions
+      )
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        return rejectWithValue(errorData.reason || `Ошибка получения service_id: ${res.status}`)
+      }
+      const data = await res.json()
+      return data.service_id
+    } catch (error) {
+      return rejectWithValue('Сетевая ошибка или невалидный JSON при получении service_id')
+    }
+  }
+)
+
+// 9. OAUTH - LOGIN
+export const oauthLoginThunk = createAsyncThunk<void, string>(
+  'user/oauthLogin',
+  async (code, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/oauth/yandex`, {
+      ...postJsonOptions,
+      body: JSON.stringify({ code, redirect_uri: REDIRECT_URI }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка OAuth ${res.status}`)
+    }
+  }
+)
+
 // --- Slice ---
 
 export const userSlice = createSlice({
@@ -222,6 +271,26 @@ export const userSlice = createSlice({
       // LOGOUT
       .addCase(logoutThunk.fulfilled, state => {
         state.data = null
+      })
+
+      // OAUTH - SERVICE ID
+      .addCase(fetchServiceIdThunk.fulfilled, (state, { payload }: PayloadAction<string>) => {
+        state.serviceId = payload
+      })
+      .addCase(fetchServiceIdThunk.rejected, (state, action) => {
+        console.error('OAuth Service ID Error:', action.payload)
+        state.serviceId = null
+      })
+
+      // OAUTH - LOGIN
+      .addCase(oauthLoginThunk.pending, state => {
+        state.authError = null
+      })
+      .addCase(oauthLoginThunk.fulfilled, state => {
+        state.authError = null
+      })
+      .addCase(oauthLoginThunk.rejected, (state, action) => {
+        state.authError = (action.payload as string) || action.error.message || 'Ошибка OAuth'
       })
 
       // UPDATE
