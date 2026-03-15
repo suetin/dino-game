@@ -2,11 +2,16 @@ import './loadEnv'
 import 'reflect-metadata'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
+import leaderboardRouter from './routes/leaderboardRouter'
+
 const app = express()
 const port = Number(process.env.SERVER_PORT) || 3001
 const skipDB = process.env.SKIP_DB === 'true'
+
 app.use(cors())
 app.use(express.json())
+
+app.use('/api/v2/leaderboard', leaderboardRouter)
 
 // MOCK DATA
 const MOCK_USER = {
@@ -52,17 +57,12 @@ app.post('/auth/logout', (_req: Request, res: Response) => {
   res.sendStatus(200)
 })
 
-// Profile Update (Mock)
 app.put('/user/profile', (req: Request, res: Response) => {
   const data = req.body
-  // В реальности тут был бы апдейт базы
   return res.json({ ...MOCK_USER, ...data })
 })
 
-// Avatar Update (Mock - без реальной загрузки файла пока)
 app.put('/user/profile/avatar', (_req: Request, res: Response) => {
-  // Тут должна быть обработка FormData
-  // Возвращаем заглушку
   return res.json({ ...MOCK_USER, avatarUrl: '/path/to/avatar.jpg' })
 })
 
@@ -80,15 +80,16 @@ const start = async () => {
       const { connectDB } = await import('./db')
       const { topicRouter } = await import('./routes/topicRouter')
       const { commentRouter } = await import('./routes/commentRouter')
-      const { leaderboardRouter } = await import('./routes/leaderboardRouter')
+
       app.use('/api/forum/topics', topicRouter)
       app.use('/api/forum/comments', commentRouter)
-      app.use('/api/v2/leaderboard', leaderboardRouter)
+
       await connectDB()
       console.log('  ➜ Database connected')
     } else {
       console.log('  ➜ Running without database (SKIP_DB=true)')
     }
+
     app.listen(port, () => {
       console.log(`  ➜  Server is listening on port: ${port}`)
     })
@@ -97,4 +98,5 @@ const start = async () => {
     process.exit(1)
   }
 }
+
 start()
