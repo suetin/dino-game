@@ -80,8 +80,10 @@ const start = async () => {
       const { connectDB } = await import('./db')
       const { topicRouter } = await import('./routes/topicRouter')
       const { commentRouter } = await import('./routes/commentRouter')
+      const { leaderboardRouter } = await import('./routes/leaderboardRouter')
       app.use('/api/forum/topics', topicRouter)
       app.use('/api/forum/comments', commentRouter)
+      app.use('/api/v2/leaderboard', leaderboardRouter)
       await connectDB()
       console.log('  ➜ Database connected')
     } else {
