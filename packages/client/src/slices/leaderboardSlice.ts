@@ -144,7 +144,6 @@ export const leaderboardSlice = createSlice({
   },
   extraReducers: builder => {
     builder
-      // submit
       .addCase(submitLeaderboardResultThunk.pending, state => {
         state.isSubmitting = true
         state.submitStatus = 'pending'
