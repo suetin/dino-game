@@ -1,20 +1,16 @@
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
-import { SERVER_HOST } from '@/constants'
 
 export const LEADERBOARD_RATING_FIELD_NAME = 'score'
-export const LEADERBOARD_BEST_SCORE_KEY = 'dino_best_score'
+export const LEADERBOARD_TEAM_NAME = 'dino-team'
 
 type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
 
 export type LeaderboardEntry = {
-  id: number
   data: {
     name: string
     score: number
   }
-  createdAt: string
-  updatedAt: string
 }
 
 type SubmitLeaderboardPayload = {
@@ -28,19 +24,13 @@ type FetchLeaderboardPayload = {
   append?: boolean
 }
 
-type FetchLeaderboardResponse = {
-  data: LeaderboardEntry[]
-  cursor: number | null
-  total: number
-}
-
 export interface LeaderboardState {
   entries: LeaderboardEntry[]
   isLoading: boolean
   isSubmitting: boolean
   error: string | null
-  cursor: number | null
   total: number
+  hasMore: boolean
   fetchStatus: RequestStatus
   submitStatus: RequestStatus
 }
@@ -50,44 +40,49 @@ const initialState: LeaderboardState = {
   isLoading: false,
   isSubmitting: false,
   error: null,
-  cursor: 0,
   total: 0,
+  hasMore: true,
   fetchStatus: 'idle',
   submitStatus: 'idle',
 }
 
-function getBestScoreFromStorage() {
-  if (typeof window === 'undefined') return 0
-
-  const raw = window.localStorage.getItem(LEADERBOARD_BEST_SCORE_KEY)
-  const parsed = Number(raw)
-
-  return Number.isFinite(parsed) ? parsed : 0
+type RawLeaderboardEntry = {
+  data: {
+    score: number
+    name?: string
+    userName?: string
+    username?: string
+    user?: string
+    login?: string
+  }
 }
 
-function setBestScoreToStorage(score: number) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(LEADERBOARD_BEST_SCORE_KEY, String(score))
-}
+const getLeaderboardEntryName = (data: RawLeaderboardEntry['data']) =>
+  data.name || data.userName || data.username || data.user || data.login || 'Anonymous'
+
+const normalizeLeaderboardEntry = (entry: RawLeaderboardEntry): LeaderboardEntry => ({
+  data: {
+    name: getLeaderboardEntryName(entry.data),
+    score: entry.data.score,
+  },
+})
+
+type FetchLeaderboardResponse = LeaderboardEntry[]
 
 export const submitLeaderboardResultThunk = createAsyncThunk<
-  LeaderboardEntry | null,
+  LeaderboardEntry[] | null,
   SubmitLeaderboardPayload
 >('leaderboard/submitLeaderboardResultThunk', async payload => {
-  const bestScore = getBestScoreFromStorage()
-
-  if (payload.score <= bestScore) {
-    return null
-  }
-
-  const response = await fetch(`${SERVER_HOST}/api/v2/leaderboard`, {
+  const response = await fetch('https://ya-praktikum.tech/api/v2/leaderboard', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({
       data: payload,
       ratingFieldName: LEADERBOARD_RATING_FIELD_NAME,
+      teamName: LEADERBOARD_TEAM_NAME,
     }),
   })
 
@@ -95,24 +90,22 @@ export const submitLeaderboardResultThunk = createAsyncThunk<
     throw new Error('Не удалось сохранить результат')
   }
 
-  const result = await response.json()
-
-  setBestScoreToStorage(payload.score)
-
-  return result.data as LeaderboardEntry
+  return null
 })
 
 export const fetchLeaderboardThunk = createAsyncThunk<
   FetchLeaderboardResponse,
   FetchLeaderboardPayload | undefined
 >('leaderboard/fetchLeaderboardThunk', async payload => {
-  const response = await fetch(`${SERVER_HOST}/api/v2/leaderboard/all`, {
+  const response = await fetch('https://ya-praktikum.tech/api/v2/leaderboard/all', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({
       ratingFieldName: LEADERBOARD_RATING_FIELD_NAME,
+      teamName: LEADERBOARD_TEAM_NAME,
       cursor: payload?.cursor ?? 0,
       limit: payload?.limit ?? 10,
     }),
@@ -122,7 +115,8 @@ export const fetchLeaderboardThunk = createAsyncThunk<
     throw new Error('Не удалось загрузить таблицу лидеров')
   }
 
-  return response.json()
+  const result = (await response.json()) as RawLeaderboardEntry[]
+  return result.map(normalizeLeaderboardEntry)
 })
 
 export const leaderboardSlice = createSlice({
@@ -131,8 +125,8 @@ export const leaderboardSlice = createSlice({
   reducers: {
     resetLeaderboard(state) {
       state.entries = []
-      state.cursor = 0
       state.total = 0
+      state.hasMore = true
       state.error = null
       state.fetchStatus = 'idle'
     },
@@ -149,26 +143,16 @@ export const leaderboardSlice = createSlice({
         state.submitStatus = 'pending'
         state.error = null
       })
-      .addCase(
-        submitLeaderboardResultThunk.fulfilled,
-        (state, action: PayloadAction<LeaderboardEntry | null>) => {
-          state.isSubmitting = false
-          state.submitStatus = 'success'
-
-          if (!action.payload) return
-
-          const existingIndex = state.entries.findIndex(entry => entry.id === action.payload?.id)
-
-          if (existingIndex >= 0) {
-            state.entries[existingIndex] = action.payload
-          }
-        }
-      )
+      .addCase(submitLeaderboardResultThunk.fulfilled, state => {
+        state.isSubmitting = false
+        state.submitStatus = 'success'
+      })
       .addCase(submitLeaderboardResultThunk.rejected, (state, action) => {
         state.isSubmitting = false
         state.submitStatus = 'error'
         state.error = action.error.message ?? 'Ошибка сохранения результата'
       })
+
       .addCase(fetchLeaderboardThunk.pending, state => {
         state.isLoading = true
         state.fetchStatus = 'pending'
@@ -179,20 +163,21 @@ export const leaderboardSlice = createSlice({
         state.fetchStatus = 'success'
 
         const append = action.meta.arg?.append ?? false
+        const limit = action.meta.arg?.limit ?? 10
 
         if (append) {
-          state.entries.push(...action.payload.data)
+          state.entries.push(...action.payload)
         } else {
-          state.entries = action.payload.data
+          state.entries = action.payload
         }
 
-        state.cursor = action.payload.cursor
-        state.total = action.payload.total
+        state.total = state.entries.length
+        state.hasMore = action.payload.length === limit
       })
       .addCase(fetchLeaderboardThunk.rejected, (state, action) => {
         state.isLoading = false
         state.fetchStatus = 'error'
-        state.error = action.error.message ?? 'Ошибка загрузки leaderboard'
+        state.error = action.error.message ?? 'Ошибка загрузки таблицы лидеров'
       })
   },
 })
@@ -207,9 +192,9 @@ export const selectLeaderboardSubmitting = (state: RootState) => state.leaderboa
 
 export const selectLeaderboardError = (state: RootState) => state.leaderboard.error
 
-export const selectLeaderboardCursor = (state: RootState) => state.leaderboard.cursor
-
 export const selectLeaderboardTotal = (state: RootState) => state.leaderboard.total
+
+export const selectLeaderboardHasMore = (state: RootState) => state.leaderboard.hasMore
 
 export const selectLeaderboardFetchStatus = (state: RootState) => state.leaderboard.fetchStatus
 

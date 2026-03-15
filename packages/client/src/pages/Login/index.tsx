@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from '@/store'
 import { loginThunk, selectUser, selectAuthError, clearAuthError } from '@/slices/userSlice'
-import { validateEmail, validatePassword } from '@/lib/validation'
+import { validatePassword } from '@/lib/validation'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
@@ -17,9 +17,9 @@ export const LoginPage = () => {
   const user = useSelector(selectUser)
   const authError = useSelector(selectAuthError)
 
-  const [email, setEmail] = useState('')
+  const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+  const [errors, setErrors] = useState<{ login?: string; password?: string }>({})
 
   useEffect(() => {
     if (user) {
@@ -34,17 +34,20 @@ export const LoginPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const emailErr = validateEmail(email)
+
+    const loginErr = login.trim() ? '' : 'Логин обязателен'
     const passwordErr = validatePassword(password)
-    if (emailErr || passwordErr) {
+
+    if (loginErr || passwordErr) {
       setErrors({
-        email: emailErr || undefined,
+        login: loginErr || undefined,
         password: passwordErr || undefined,
       })
       return
     }
+
     setErrors({})
-    dispatch(loginThunk({ email: email.trim(), password }))
+    dispatch(loginThunk({ login: login.trim(), password }))
   }
 
   if (user) {
@@ -58,20 +61,23 @@ export const LoginPage = () => {
       <h1 className="text-2xl font-bold mb-4">Вход</h1>
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 text-left">
         <div className="space-y-2">
-          <Label htmlFor="login-email">Email</Label>
+          <Label htmlFor="login-name">Логин</Label>
           <Input
-            id="login-email"
-            type="email"
-            placeholder="email@example.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
+            id="login-name"
+            type="text"
+            placeholder="Введите логин"
+            value={login}
+            onChange={e => setLogin(e.target.value)}
             onBlur={() =>
-              setErrors(prev => ({ ...prev, email: validateEmail(email) || undefined }))
+              setErrors(prev => ({
+                ...prev,
+                login: login.trim() ? undefined : 'Логин обязателен',
+              }))
             }
-            autoComplete="email"
-            className={errors.email ? 'border-destructive' : ''}
+            autoComplete="username"
+            className={errors.login ? 'border-destructive' : ''}
           />
-          {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+          {errors.login && <p className="text-sm text-destructive">{errors.login}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="login-password">Пароль</Label>

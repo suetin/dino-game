@@ -14,6 +14,7 @@ export interface User {
   avatarUrl?: string | null
   email?: string
   displayName?: string
+  userName?: string
   login?: string
 }
 
@@ -36,79 +37,149 @@ const initialState: UserState = {
   avatarStatus: 'idle',
 }
 
+const PRAKTIKUM_API_URL = 'https://ya-praktikum.tech/api/v2'
+
+type PraktikumUser = {
+  id: number
+  first_name: string
+  second_name: string
+  display_name: string | null
+  login: string
+  email: string
+  phone: string
+  avatar: string | null
+}
+
+const mapPraktikumUser = (user: PraktikumUser): User => ({
+  id: String(user.id),
+  name: user.first_name,
+  secondName: user.second_name,
+  displayName: user.display_name ?? '',
+  login: user.login,
+  email: user.email,
+  phone: user.phone,
+  avatarUrl: user.avatar ? `https://ya-praktikum.tech/api/v2/resources/${user.avatar}` : null,
+})
+
 // --- Thunks ---
 
 // 1. FETCH USER
 export const fetchUserThunk = createAsyncThunk(
   'user/fetchUserThunk',
   async (_, { rejectWithValue }) => {
-    const url = `${SERVER_HOST}/user`
-    const res = await fetch(url)
+    const res = await fetch(`${PRAKTIKUM_API_URL}/auth/user`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
     if (!res.ok) {
-      // Если 401, то это не ошибка, а просто неавторизованный пользователь
       if (res.status === 401) {
         return rejectWithValue('Unauthorized')
       }
-      // Попытаемся прочитать тело ответа как JSON для получения причины ошибки
+
       const errorData = await res.json().catch(() => ({}))
       return rejectWithValue(errorData.reason || `Ошибка ${res.status}`)
     }
-    const user = (await res.json()) as User
-    // Проверяем, что в ответе есть id пользователя
-    if (!user || !user.id) {
-      return rejectWithValue('User not found')
-    }
-    return user
+
+    const user = (await res.json()) as PraktikumUser
+    return mapPraktikumUser(user)
   }
 )
 
 // 2. LOGIN
 export interface LoginCredentials {
-  email: string
+  login: string
   password: string
 }
 export const loginThunk = createAsyncThunk(
   'user/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
-    const res = await fetch(`${SERVER_HOST}/auth/login`, {
+    const res = await fetch(`${PRAKTIKUM_API_URL}/auth/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(credentials),
     })
-    const data = await res.json().catch(() => ({}))
+
     if (!res.ok) {
-      return rejectWithValue(data.message || `Ошибка входа ${res.status}`)
+      const data = await res.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка входа ${res.status}`)
     }
-    return data as User
+
+    const userRes = await fetch(`${PRAKTIKUM_API_URL}/auth/user`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    if (!userRes.ok) {
+      const data = await userRes.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка получения пользователя ${userRes.status}`)
+    }
+
+    const user = (await userRes.json()) as PraktikumUser
+    return mapPraktikumUser(user)
   }
 )
 
 // 3. REGISTER
+
 export interface RegisterPayload {
   email: string
   password: string
   name: string
   secondName: string
+  login?: string
+  phone?: string
 }
+
 export const registerThunk = createAsyncThunk(
   'user/register',
   async (payload: RegisterPayload, { rejectWithValue }) => {
-    const res = await fetch(`${SERVER_HOST}/auth/register`, {
+    const signupRes = await fetch(`${PRAKTIKUM_API_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      credentials: 'include',
+      body: JSON.stringify({
+        first_name: payload.name,
+        second_name: payload.secondName,
+        login: payload.login,
+        email: payload.email,
+        password: payload.password,
+        phone: payload.phone,
+      }),
     })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      return rejectWithValue(data.message || `Ошибка регистрации ${res.status}`)
+
+    if (!signupRes.ok) {
+      const data = await signupRes.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка регистрации ${signupRes.status}`)
     }
-    return data as User
+
+    const userRes = await fetch(`${PRAKTIKUM_API_URL}/auth/user`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    if (!userRes.ok) {
+      const data = await userRes.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка получения пользователя ${userRes.status}`)
+    }
+
+    const user = (await userRes.json()) as PraktikumUser
+    return mapPraktikumUser(user)
   }
 )
 
 // 4. LOGOUT
-export const logoutThunk = createAsyncThunk('user/logout', async () => {
-  await fetch(`${SERVER_HOST}/auth/logout`, { method: 'POST' })
+export const logoutThunk = createAsyncThunk('user/logout', async (_, { rejectWithValue }) => {
+  const res = await fetch(`${PRAKTIKUM_API_URL}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    return rejectWithValue(data.reason || `Ошибка выхода ${res.status}`)
+  }
 })
 
 // 5. UPDATE USER

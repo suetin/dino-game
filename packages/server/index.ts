@@ -2,7 +2,6 @@ import './loadEnv'
 import 'reflect-metadata'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
-import leaderboardRouter from './routes/leaderboardRouter'
 
 const app = express()
 const port = Number(process.env.SERVER_PORT) || 3001
@@ -10,8 +9,6 @@ const skipDB = process.env.SKIP_DB === 'true'
 
 app.use(cors())
 app.use(express.json())
-
-app.use('/api/v2/leaderboard', leaderboardRouter)
 
 // MOCK DATA
 const MOCK_USER = {

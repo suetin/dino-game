@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { useDispatch, useSelector } from '@/store'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
@@ -21,7 +21,7 @@ import {
   selectLeaderboardEntries,
   selectLeaderboardError,
   selectLeaderboardLoading,
-  selectLeaderboardTotal,
+  selectLeaderboardHasMore,
 } from '@/slices/leaderboardSlice'
 
 const PAGE_SIZE = 10
@@ -36,41 +36,32 @@ export const LeaderboardPage = () => {
   const entries = useSelector(selectLeaderboardEntries)
   const isLoading = useSelector(selectLeaderboardLoading)
   const error = useSelector(selectLeaderboardError)
-  const total = useSelector(selectLeaderboardTotal)
-
-  const [page, setPage] = useState(1)
+  const hasMore = useSelector(selectLeaderboardHasMore)
 
   const currentPlayerName = normalizePlayerName(
-    user?.displayName || user?.name || user?.login || user?.email || 'Anonymous'
+    user?.displayName || user?.name || user?.login || user?.email || user?.userName || 'Anonymous'
   )
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   useEffect(() => {
     dispatch(resetLeaderboard())
   }, [dispatch])
 
   useEffect(() => {
+    dispatch(resetLeaderboard())
+    dispatch(fetchLeaderboardThunk({ cursor: 0, limit: PAGE_SIZE, append: false }))
+  }, [dispatch])
+
+  const handleLoadMore = () => {
+    if (isLoading || !hasMore) return
+
     dispatch(
       fetchLeaderboardThunk({
-        cursor: (page - 1) * PAGE_SIZE,
+        cursor: entries.length,
         limit: PAGE_SIZE,
-        append: false,
+        append: true,
       })
     )
-  }, [dispatch, page])
-
-  const visiblePages = useMemo(() => {
-    const pages: number[] = []
-    const start = Math.max(1, page - 2)
-    const end = Math.min(totalPages, page + 2)
-
-    for (let p = start; p <= end; p += 1) {
-      pages.push(p)
-    }
-
-    return pages
-  }, [page, totalPages])
+  }
 
   return (
     <WrapperContent className="max-w-[1000px] items-center justify-center">
@@ -110,82 +101,67 @@ export const LeaderboardPage = () => {
                   ? 'overflow-hidden rounded-md border border-slate-700 bg-slate-800'
                   : 'overflow-hidden rounded-md border border-zinc-200 bg-zinc-50'
               }>
-              <Table>
-                <TableHeader>
-                  <TableRow
-                    className={
-                      isDarkMode
-                        ? 'bg-slate-700 hover:bg-slate-700'
-                        : 'bg-zinc-100 hover:bg-zinc-100'
-                    }>
-                    <TableHead>#</TableHead>
-                    <TableHead>Игрок</TableHead>
-                    <TableHead className="text-right">Счёт</TableHead>
-                  </TableRow>
-                </TableHeader>
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow
+                      className={
+                        isDarkMode
+                          ? 'bg-slate-700 hover:bg-slate-700'
+                          : 'bg-zinc-100 hover:bg-zinc-100'
+                      }>
+                      <TableHead className="w-[80px]">#</TableHead>
+                      <TableHead>Игрок</TableHead>
+                      <TableHead className="w-[120px] text-right">Счёт</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                </Table>
 
-                <TableBody>
-                  {entries.map((entry, index) => {
-                    const isCurrentPlayer =
-                      normalizePlayerName(entry.data.name) === currentPlayerName
+                <div className="max-h-[500px] overflow-y-auto">
+                  <Table>
+                    <TableBody>
+                      {entries.map((entry, index) => {
+                        const isCurrentPlayer =
+                          normalizePlayerName(entry.data.name) === currentPlayerName
 
-                    const rowNumber = (page - 1) * PAGE_SIZE + index + 1
+                        const rowNumber = index + 1
 
-                    return (
-                      <TableRow
-                        key={entry.id}
-                        className={
-                          isCurrentPlayer
-                            ? isDarkMode
-                              ? 'bg-blue-900/40 font-semibold'
-                              : 'bg-blue-100 font-semibold'
-                            : isDarkMode
-                            ? 'hover:bg-slate-700/60'
-                            : 'hover:bg-zinc-100'
-                        }>
-                        <TableCell>{rowNumber}</TableCell>
+                        return (
+                          <TableRow
+                            key={rowNumber}
+                            className={
+                              isCurrentPlayer
+                                ? isDarkMode
+                                  ? 'bg-blue-900/40 font-semibold'
+                                  : 'bg-blue-100 font-semibold'
+                                : isDarkMode
+                                ? 'hover:bg-slate-700/60'
+                                : 'hover:bg-zinc-100'
+                            }>
+                            <TableCell className="w-[80px]">{rowNumber}</TableCell>
 
-                        <TableCell>
-                          {entry.data.name}
-                          {isCurrentPlayer && <span className="ml-2 text-blue-400">★</span>}
-                        </TableCell>
+                            <TableCell>
+                              {entry.data.name}
+                              {isCurrentPlayer && <span className="ml-2 text-blue-400">★</span>}
+                            </TableCell>
 
-                        <TableCell className="text-right">{entry.data.score}</TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                            <TableCell className="w-[120px] text-right">
+                              {entry.data.score}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </div>
           )}
 
-          {totalPages > 1 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={page === 1 || isLoading}
-                onClick={() => setPage(prev => prev - 1)}>
-                Назад
-              </Button>
-
-              {visiblePages.map(pageNumber => (
-                <Button
-                  key={pageNumber}
-                  type="button"
-                  variant={pageNumber === page ? 'default' : 'outline'}
-                  disabled={isLoading}
-                  onClick={() => setPage(pageNumber)}>
-                  {pageNumber}
-                </Button>
-              ))}
-
-              <Button
-                type="button"
-                variant="outline"
-                disabled={page === totalPages || isLoading}
-                onClick={() => setPage(prev => prev + 1)}>
-                Вперёд
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button type="button" onClick={handleLoadMore} disabled={isLoading}>
+                {isLoading ? 'Загрузка...' : 'Показать ещё'}
               </Button>
             </div>
           )}
