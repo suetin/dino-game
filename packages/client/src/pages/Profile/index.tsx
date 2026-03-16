@@ -208,13 +208,15 @@ export const ProfilePage = () => {
                   <Input
                     id="firstName"
                     type="text"
-                    value={isEdit ? form.name : user.name ?? ''}
-                    onChange={isEdit ? onChangeField('name') : undefined}
-                    onBlur={isEdit ? onBlurFieldHandler('name') : undefined}
+                    value={isEdit ? form.first_name : user.first_name ?? ''}
+                    onChange={isEdit ? onChangeField('first_name') : undefined}
+                    onBlur={isEdit ? onBlurFieldHandler('first_name') : undefined}
                     readOnly={!isEdit || saving}
-                    aria-invalid={!!errors.name}
+                    aria-invalid={!!errors.first_name}
                   />
-                  {isEdit && errors.name ? <FieldError>{errors.name}</FieldError> : null}
+                  {isEdit && errors.first_name ? (
+                    <FieldError>{errors.first_name}</FieldError>
+                  ) : null}
                 </Field>
 
                 <Field>
@@ -222,14 +224,14 @@ export const ProfilePage = () => {
                   <Input
                     id="secondName"
                     type="text"
-                    value={isEdit ? form.secondName : user.secondName ?? ''}
-                    onChange={isEdit ? onChangeField('secondName') : undefined}
-                    onBlur={isEdit ? onBlurFieldHandler('secondName') : undefined}
+                    value={isEdit ? form.second_name : user.second_name ?? ''}
+                    onChange={isEdit ? onChangeField('second_name') : undefined}
+                    onBlur={isEdit ? onBlurFieldHandler('second_name') : undefined}
                     readOnly={!isEdit || saving}
-                    aria-invalid={!!errors.secondName}
+                    aria-invalid={!!errors.second_name}
                   />
-                  {isEdit && errors.secondName ? (
-                    <FieldError>{errors.secondName}</FieldError>
+                  {isEdit && errors.second_name ? (
+                    <FieldError>{errors.second_name}</FieldError>
                   ) : null}
                 </Field>
 
@@ -262,18 +264,18 @@ export const ProfilePage = () => {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="displayName">Имя пользователя</FieldLabel>
+                  <FieldLabel htmlFor="display_name">Имя пользователя</FieldLabel>
                   <Input
-                    id="displayName"
+                    id="display_name"
                     type="text"
-                    value={isEdit ? form.displayName : user.displayName ?? ''}
-                    onChange={isEdit ? onChangeField('displayName') : undefined}
-                    onBlur={isEdit ? onBlurFieldHandler('displayName') : undefined}
+                    value={isEdit ? form.display_name : user.displayName ?? ''}
+                    onChange={isEdit ? onChangeField('display_name') : undefined}
+                    onBlur={isEdit ? onBlurFieldHandler('display_name') : undefined}
                     readOnly={!isEdit || saving}
-                    aria-invalid={!!errors.displayName}
+                    aria-invalid={!!errors.display_name}
                   />
-                  {isEdit && errors.displayName ? (
-                    <FieldError>{errors.displayName}</FieldError>
+                  {isEdit && errors.display_name ? (
+                    <FieldError>{errors.display_name}</FieldError>
                   ) : null}
                 </Field>
               </FieldGroup>

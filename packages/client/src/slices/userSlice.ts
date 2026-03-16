@@ -122,7 +122,7 @@ export const logoutThunk = createAsyncThunk('user/logout', async () => {
 // 5. UPDATE USER
 export const updateUserThunk = createAsyncThunk<
   User,
-  { firstName: string; secondName: string; phone: string; email: string; displayName: string }
+  { first_name: string; second_name: string; phone: string; email: string; display_name: string }
 >('user/updateUserThunk', async payload => {
   const res = await fetch(`${SERVER_HOST}/user/profile`, {
     ...postJsonOptions,
