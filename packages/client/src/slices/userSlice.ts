@@ -8,8 +8,8 @@ export type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
 
 export interface User {
   id?: string
-  name: string
-  secondName: string
+  first_name: string
+  second_name: string
   phone?: string
   avatarUrl?: string | null
   email?: string
@@ -52,8 +52,8 @@ type PraktikumUser = {
 
 const mapPraktikumUser = (user: PraktikumUser): User => ({
   id: String(user.id),
-  name: user.first_name,
-  secondName: user.second_name,
+  first_name: user.first_name,
+  second_name: user.second_name,
   displayName: user.display_name ?? '',
   login: user.login,
   email: user.email,
@@ -142,7 +142,7 @@ export const logoutThunk = createAsyncThunk('user/logout', async () => {
 // 5. UPDATE USER
 export const updateUserThunk = createAsyncThunk<
   User,
-  { name: string; secondName: string; phone: string; email: string; displayName: string }
+  { first_name: string; second_name: string; phone: string; email: string; display_name: string }
 >('user/updateUserThunk', async payload => {
   const res = await fetch(`${SERVER_HOST}/user/profile`, {
     method: 'PUT',
