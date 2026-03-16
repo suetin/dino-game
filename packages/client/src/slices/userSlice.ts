@@ -14,6 +14,7 @@ export interface User {
   avatarUrl?: string | null
   email?: string
   displayName?: string
+  userName?: string
   login?: string
 }
 
@@ -63,12 +64,9 @@ export const fetchUserThunk = createAsyncThunk(
       }
       throw new Error(text || `Ошибка ${res.status}`)
     }
-    const user = (await res.json()) as User
-    // Проверяем, что в ответе есть id пользователя
-    if (!user || !user.id) {
-      return rejectWithValue('User not found')
-    }
-    return user
+
+    const user = (await res.json()) as PraktikumUser
+    return mapPraktikumUser(user)
   }
 )
 

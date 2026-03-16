@@ -2,9 +2,11 @@ import './loadEnv'
 import 'reflect-metadata'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
+
 const app = express()
 const port = Number(process.env.SERVER_PORT) || 3001
 const skipDB = process.env.SKIP_DB === 'true'
+
 app.use(cors())
 app.use(express.json())
 
@@ -80,13 +82,16 @@ const start = async () => {
       const { connectDB } = await import('./db')
       const { topicRouter } = await import('./routes/topicRouter')
       const { commentRouter } = await import('./routes/commentRouter')
+
       app.use('/api/forum/topics', topicRouter)
       app.use('/api/forum/comments', commentRouter)
+
       await connectDB()
       console.log('  ➜ Database connected')
     } else {
       console.log('  ➜ Running without database (SKIP_DB=true)')
     }
+
     app.listen(port, () => {
       console.log(`  ➜  Server is listening on port: ${port}`)
     })
@@ -95,4 +100,5 @@ const start = async () => {
     process.exit(1)
   }
 }
+
 start()

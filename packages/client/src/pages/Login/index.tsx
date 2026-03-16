@@ -50,6 +50,7 @@ export const LoginPage = () => {
       })
       return
     }
+
     setErrors({})
 
     // Новая двухшаговая логика
