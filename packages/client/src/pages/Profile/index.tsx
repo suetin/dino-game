@@ -29,7 +29,7 @@ import { DefaultAvatarIcon } from '@/pages/Profile/ui/DefaultAvatarIcon'
 import { emptyProfileForm, mapUserToProfileForm } from '@/pages/Profile/utils/mappers'
 import { validateAvatarFile } from '@/pages/Profile/utils/avatar.utils'
 
-export const ProfilePage = () => {
+const ProfilePage = () => {
   const dispatch = useDispatch()
   const user = useSelector(selectUser)
 
@@ -208,15 +208,13 @@ export const ProfilePage = () => {
                   <Input
                     id="firstName"
                     type="text"
-                    value={isEdit ? form.first_name : user.first_name ?? ''}
-                    onChange={isEdit ? onChangeField('first_name') : undefined}
-                    onBlur={isEdit ? onBlurFieldHandler('first_name') : undefined}
+                    value={isEdit ? form.name : user.name ?? ''}
+                    onChange={isEdit ? onChangeField('name') : undefined}
+                    onBlur={isEdit ? onBlurFieldHandler('name') : undefined}
                     readOnly={!isEdit || saving}
-                    aria-invalid={!!errors.first_name}
+                    aria-invalid={!!errors.name}
                   />
-                  {isEdit && errors.first_name ? (
-                    <FieldError>{errors.first_name}</FieldError>
-                  ) : null}
+                  {isEdit && errors.name ? <FieldError>{errors.name}</FieldError> : null}
                 </Field>
 
                 <Field>
@@ -224,14 +222,14 @@ export const ProfilePage = () => {
                   <Input
                     id="secondName"
                     type="text"
-                    value={isEdit ? form.second_name : user.second_name ?? ''}
-                    onChange={isEdit ? onChangeField('second_name') : undefined}
-                    onBlur={isEdit ? onBlurFieldHandler('second_name') : undefined}
+                    value={isEdit ? form.secondName : user.secondName ?? ''}
+                    onChange={isEdit ? onChangeField('secondName') : undefined}
+                    onBlur={isEdit ? onBlurFieldHandler('secondName') : undefined}
                     readOnly={!isEdit || saving}
-                    aria-invalid={!!errors.second_name}
+                    aria-invalid={!!errors.secondName}
                   />
-                  {isEdit && errors.second_name ? (
-                    <FieldError>{errors.second_name}</FieldError>
+                  {isEdit && errors.secondName ? (
+                    <FieldError>{errors.secondName}</FieldError>
                   ) : null}
                 </Field>
 
@@ -264,18 +262,18 @@ export const ProfilePage = () => {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="display_name">Имя пользователя</FieldLabel>
+                  <FieldLabel htmlFor="displayName">Имя пользователя</FieldLabel>
                   <Input
-                    id="display_name"
+                    id="displayName"
                     type="text"
-                    value={isEdit ? form.display_name : user.displayName ?? ''}
-                    onChange={isEdit ? onChangeField('display_name') : undefined}
-                    onBlur={isEdit ? onBlurFieldHandler('display_name') : undefined}
+                    value={isEdit ? form.displayName : user.displayName ?? ''}
+                    onChange={isEdit ? onChangeField('displayName') : undefined}
+                    onBlur={isEdit ? onBlurFieldHandler('displayName') : undefined}
                     readOnly={!isEdit || saving}
-                    aria-invalid={!!errors.display_name}
+                    aria-invalid={!!errors.displayName}
                   />
-                  {isEdit && errors.display_name ? (
-                    <FieldError>{errors.display_name}</FieldError>
+                  {isEdit && errors.displayName ? (
+                    <FieldError>{errors.displayName}</FieldError>
                   ) : null}
                 </Field>
               </FieldGroup>
@@ -307,6 +305,7 @@ export const ProfilePage = () => {
     </WrapperContent>
   )
 }
+export default ProfilePage
 
 export const initProfilePage = async ({ dispatch, state }: PageInitArgs) => {
   if (!selectUser(state)) {

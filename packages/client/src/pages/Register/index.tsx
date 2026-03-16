@@ -4,10 +4,8 @@ import { useDispatch, useSelector } from '@/store'
 import { registerThunk, selectUser, selectAuthError, clearAuthError } from '@/slices/userSlice'
 import {
   validateEmail,
-  validateLogin,
   validatePassword,
   validatePasswordMatch,
-  validatePhone,
   validateRequired,
   validatePhone,
   validateLogin,
@@ -29,8 +27,6 @@ export const RegisterPage = () => {
   const [repeatPassword, setRepeatPassword] = useState('')
   const [first_name, setName] = useState('')
   const [second_name, setSecondName] = useState('')
-  const [login, setLogin] = useState('')
-  const [phone, setPhone] = useState('')
   const [errors, setErrors] = useState<{
     email?: string
     password?: string

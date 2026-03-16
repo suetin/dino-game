@@ -1,9 +1,9 @@
 export type ProfileFormState = {
-  first_name: string
-  second_name: string
+  name: string
+  secondName: string
   phone: string
   email: string
-  display_name: string
+  displayName: string
 }
 
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormState, string>>
@@ -13,14 +13,14 @@ export function validateProfile(values: ProfileFormState): ProfileFormErrors {
   const t = (s: string) => s.trim()
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-  if (!t(values.first_name)) e.first_name = 'Имя обязательно'
-  else if (t(values.first_name).length < 2) e.first_name = 'Минимум 2 символа'
+  if (!t(values.name)) e.name = 'Имя обязательно'
+  else if (t(values.name).length < 2) e.name = 'Минимум 2 символа'
 
-  if (!t(values.second_name)) e.second_name = 'Фамилия обязательна'
-  else if (t(values.second_name).length < 2) e.second_name = 'Минимум 2 символа'
+  if (!t(values.secondName)) e.secondName = 'Фамилия обязательна'
+  else if (t(values.secondName).length < 2) e.secondName = 'Минимум 2 символа'
 
-  if (!t(values.display_name)) e.display_name = 'Имя пользователя обязательно'
-  else if (t(values.display_name).length < 2) e.display_name = 'Минимум 2 символа'
+  if (!t(values.displayName)) e.displayName = 'Имя пользователя обязательно'
+  else if (t(values.displayName).length < 2) e.displayName = 'Минимум 2 символа'
 
   if (!t(values.email)) e.email = 'Почта обязательна'
   else if (!emailRe.test(t(values.email))) e.email = 'Некорректная почта'

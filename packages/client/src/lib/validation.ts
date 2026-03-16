@@ -65,39 +65,3 @@ export function validatePasswordMatch(password: string, repeatPassword: string):
   }
   return ''
 }
-
-export const validateLogin = (login: string): string | null => {
-  const value = login.trim()
-
-  if (!value) {
-    return 'Логин обязателен'
-  }
-
-  if (value.length < 3 || value.length > 20) {
-    return 'Логин должен быть от 3 до 20 символов'
-  }
-
-  if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
-    return 'Логин может содержать только латиницу, цифры, "-" и "_"'
-  }
-
-  if (!/[a-zA-Z]/.test(value)) {
-    return 'Логин должен содержать хотя бы одну букву'
-  }
-
-  return null
-}
-
-export const validatePhone = (phone: string): string | null => {
-  const value = phone.trim()
-
-  if (!value) {
-    return 'Телефон обязателен'
-  }
-
-  if (!/^\+?\d{10,15}$/.test(value)) {
-    return 'Телефон должен содержать от 10 до 15 цифр и может начинаться с +'
-  }
-
-  return null
-}

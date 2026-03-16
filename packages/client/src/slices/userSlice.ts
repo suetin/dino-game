@@ -8,8 +8,8 @@ export type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
 
 export interface User {
   id?: string
-  first_name: string
-  second_name: string
+  name: string
+  secondName: string
   phone?: string
   avatarUrl?: string | null
   email?: string
@@ -38,6 +38,28 @@ const initialState: UserState = {
   updateStatus: 'idle',
   avatarStatus: 'idle',
 }
+
+type PraktikumUser = {
+  id: number
+  first_name: string
+  second_name: string
+  display_name: string | null
+  login: string
+  email: string
+  phone: string
+  avatar: string | null
+}
+
+const mapPraktikumUser = (user: PraktikumUser): User => ({
+  id: String(user.id),
+  name: user.first_name,
+  secondName: user.second_name,
+  displayName: user.display_name ?? '',
+  login: user.login,
+  email: user.email,
+  phone: user.phone,
+  avatarUrl: user.avatar ? `https://ya-praktikum.tech/api/v2/resources/${user.avatar}` : null,
+})
 
 const fetchOptions = {
   credentials: 'include' as const,
@@ -120,11 +142,11 @@ export const logoutThunk = createAsyncThunk('user/logout', async () => {
 // 5. UPDATE USER
 export const updateUserThunk = createAsyncThunk<
   User,
-  { first_name: string; second_name: string; phone: string; email: string; display_name: string }
+  { name: string; secondName: string; phone: string; email: string; displayName: string }
 >('user/updateUserThunk', async payload => {
   const res = await fetch(`${SERVER_HOST}/user/profile`, {
-    ...postJsonOptions,
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) {
@@ -334,6 +356,5 @@ export const selectUserLoading = (state: RootState) => state.user.isLoading
 export const selectUserError = (state: RootState) => state.user.error
 export const selectUserUpdateStatus = (state: RootState) => state.user.updateStatus
 export const selectUserAvatarStatus = (state: RootState) => state.user.avatarStatus
-export const selectServiceId = (state: RootState) => state.user.serviceId
 
 export default userSlice.reducer
