@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useDispatch, useSelector } from '@/store'
 import { selectIsDarkMode } from '@/slices/themeSlice'
 import { finishGame } from '@/slices/gameSlice'
+import { selectUser } from '@/slices/userSlice'
+import { submitLeaderboardResultThunk } from '@/slices/leaderboardSlice'
 import { DinoGame } from '@/games/dino/DinoGame'
 import { GAME_HEIGHT, GAME_WIDTH } from '@/games/dino/constants'
 import { getDinoGameThemeTokens } from '@/games/dino/theme'
@@ -21,6 +23,7 @@ const isTypingTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
     return false
   }
+
   const tagName = target.tagName
   return (
     tagName === 'INPUT' ||
@@ -33,7 +36,10 @@ const isTypingTarget = (target: EventTarget | null) => {
 export const PlayingView = () => {
   const dispatch = useDispatch()
   const isDarkMode = useSelector(selectIsDarkMode)
+  const user = useSelector(selectUser)
+
   const gameTheme = useMemo(() => getDinoGameThemeTokens(isDarkMode), [isDarkMode])
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasWrapRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<DinoGame | null>(null)
@@ -65,8 +71,24 @@ export const PlayingView = () => {
     })
     gameRef.current = game
 
-    const onGameOver = (score: number) => {
-      if (!cancelled) dispatch(finishGame(score))
+    const onGameOver = async (score: number) => {
+      if (cancelled) return
+
+      dispatch(finishGame(score))
+
+      const playerName =
+        user?.displayName || user?.name || user?.login || user?.email || 'Anonymous'
+
+      try {
+        await dispatch(
+          submitLeaderboardResultThunk({
+            name: playerName,
+            score,
+          })
+        )
+      } catch (error) {
+        console.error('Не удалось отправить результат в leaderboard', error)
+      }
     }
 
     game.on('gameover', onGameOver)
@@ -78,6 +100,7 @@ export const PlayingView = () => {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTypingTarget(event.target) || event.repeat) return
+
       switch (event.code) {
         case 'Space':
         case 'ArrowUp':
@@ -93,7 +116,9 @@ export const PlayingView = () => {
       const nextSize = getCanvasSize(canvasWrap)
       const nextWidth = nextSize.width
       const nextHeight = nextSize.height
+
       if (canvas.clientWidth === nextWidth && canvas.clientHeight === nextHeight) return
+
       applyCanvasResolution(nextWidth, nextHeight)
       game.resize(nextWidth, nextHeight)
     }
@@ -114,7 +139,7 @@ export const PlayingView = () => {
       window.removeEventListener('keydown', onKeyDown)
       game.off('gameover', onGameOver)
     }
-  }, [dispatch])
+  }, [dispatch, user])
 
   useEffect(() => {
     gameRef.current?.setTheme(gameTheme)

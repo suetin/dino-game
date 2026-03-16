@@ -12,6 +12,8 @@ import gameReducer from './slices/gameSlice'
 import ssrReducer from './slices/ssrSlice'
 import userReducer from './slices/userSlice'
 import themeReducer from './slices/themeSlice'
+import leaderboardReducer from './slices/leaderboardSlice'
+
 declare global {
   interface Window {
     APP_INITIAL_STATE: RootState
@@ -24,6 +26,7 @@ export const reducer = combineReducers({
   ssr: ssrReducer,
   user: userReducer,
   theme: themeReducer,
+  leaderboard: leaderboardReducer,
 })
 
 export const store = configureStore({
