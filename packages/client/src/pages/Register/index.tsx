@@ -7,6 +7,8 @@ import {
   validatePassword,
   validatePasswordMatch,
   validateRequired,
+  validatePhone,
+  validateLogin,
 } from '@/lib/validation'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
@@ -21,14 +23,18 @@ export const RegisterPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
-  const [name, setName] = useState('')
-  const [secondName, setSecondName] = useState('')
+  const [first_name, setName] = useState('')
+  const [second_name, setSecondName] = useState('')
+  const [login, setLogin] = useState('')
+  const [phone, setPhone] = useState('')
   const [errors, setErrors] = useState<{
     email?: string
     password?: string
     repeatPassword?: string
     name?: string
     secondName?: string
+    login?: string
+    phone?: string
   }>({})
   useEffect(() => {
     if (user) {
@@ -43,15 +49,19 @@ export const RegisterPage = () => {
     const emailErr = validateEmail(email)
     const passwordErr = validatePassword(password)
     const repeatErr = validatePasswordMatch(password, repeatPassword)
-    const nameErr = validateRequired(name, 'Имя')
-    const secondNameErr = validateRequired(secondName, 'Фамилия')
-    if (emailErr || passwordErr || repeatErr || nameErr || secondNameErr) {
+    const nameErr = validateRequired(first_name, 'Имя')
+    const secondNameErr = validateRequired(second_name, 'Фамилия')
+    const phoneErr = validatePhone(phone)
+    const loginErr = validateLogin(login)
+    if (emailErr || passwordErr || repeatErr || nameErr || secondNameErr || phoneErr || loginErr) {
       setErrors({
         email: emailErr || undefined,
         password: passwordErr || undefined,
         repeatPassword: repeatErr || undefined,
         name: nameErr || undefined,
         secondName: secondNameErr || undefined,
+        login: loginErr || undefined,
+        phone: phoneErr || undefined,
       })
       return
     }
@@ -60,8 +70,10 @@ export const RegisterPage = () => {
       registerThunk({
         email: email.trim(),
         password,
-        name: name.trim(),
-        secondName: secondName.trim(),
+        first_name: first_name.trim(),
+        second_name: second_name.trim(),
+        login: login,
+        phone: phone.trim(),
       })
     )
   }
@@ -88,6 +100,22 @@ export const RegisterPage = () => {
             className={errors.email ? 'border-destructive' : ''}
           />
           {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="register-login">Логин</Label>
+          <Input
+            id="register-login"
+            type="text"
+            value={login}
+            onChange={e => setLogin(e.target.value)}
+            onBlur={() =>
+              setErrors(prev => ({ ...prev, login: validateLogin(login) || undefined }))
+            }
+            autoComplete="username"
+            className={errors.login ? 'border-destructive' : ''}
+          />
+          {errors.login && <p className="text-sm text-destructive">{errors.login}</p>}
         </div>
 
         <div className="space-y-2">
@@ -130,10 +158,13 @@ export const RegisterPage = () => {
           <Input
             id="register-name"
             type="text"
-            value={name}
+            value={first_name}
             onChange={e => setName(e.target.value)}
             onBlur={() =>
-              setErrors(prev => ({ ...prev, name: validateRequired(name, 'Имя') || undefined }))
+              setErrors(prev => ({
+                ...prev,
+                name: validateRequired(first_name, 'Имя') || undefined,
+              }))
             }
             autoComplete="given-name"
             className={errors.name ? 'border-destructive' : ''}
@@ -145,12 +176,12 @@ export const RegisterPage = () => {
           <Input
             id="register-secondName"
             type="text"
-            value={secondName}
+            value={second_name}
             onChange={e => setSecondName(e.target.value)}
             onBlur={() =>
               setErrors(prev => ({
                 ...prev,
-                secondName: validateRequired(secondName, 'Фамилия') || undefined,
+                secondName: validateRequired(second_name, 'Фамилия') || undefined,
               }))
             }
             autoComplete="family-name"
@@ -158,6 +189,23 @@ export const RegisterPage = () => {
           />
           {errors.secondName && <p className="text-sm text-destructive">{errors.secondName}</p>}
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="register-phone">Телефон</Label>
+          <Input
+            id="register-phone"
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            onBlur={() =>
+              setErrors(prev => ({ ...prev, phone: validatePhone(phone) || undefined }))
+            }
+            autoComplete="tel"
+            className={errors.phone ? 'border-destructive' : ''}
+          />
+          {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+        </div>
+
         {authError && (
           <p className="text-sm text-destructive bg-destructive/10 p-2 rounded" role="alert">
             {authError}

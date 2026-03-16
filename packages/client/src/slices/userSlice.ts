@@ -8,8 +8,8 @@ export type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
 
 export interface User {
   id?: string
-  name: string
-  secondName: string
+  first_name: string
+  second_name: string
   phone?: string
   avatarUrl?: string | null
   email?: string
@@ -75,7 +75,7 @@ export const fetchUserThunk = createAsyncThunk(
 // 2. LOGIN
 export const loginThunk = createAsyncThunk(
   'user/login',
-  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+  async (credentials: { login: string; password: string }, { rejectWithValue }) => {
     const res = await fetch(`${SERVER_HOST}/auth/signin`, {
       ...postJsonOptions,
       body: JSON.stringify(credentials),
@@ -92,7 +92,14 @@ export const loginThunk = createAsyncThunk(
 export const registerThunk = createAsyncThunk(
   'user/register',
   async (
-    payload: { email: string; password: string; name: string; secondName: string },
+    payload: {
+      email: string
+      password: string
+      first_name: string
+      second_name: string
+      login: string
+      phone: string
+    },
     { rejectWithValue }
   ) => {
     const res = await fetch(`${SERVER_HOST}/auth/signup`, {
@@ -115,7 +122,7 @@ export const logoutThunk = createAsyncThunk('user/logout', async () => {
 // 5. UPDATE USER
 export const updateUserThunk = createAsyncThunk<
   User,
-  { name: string; secondName: string; phone: string; email: string; displayName: string }
+  { firstName: string; secondName: string; phone: string; email: string; displayName: string }
 >('user/updateUserThunk', async payload => {
   const res = await fetch(`${SERVER_HOST}/user/profile`, {
     ...postJsonOptions,
