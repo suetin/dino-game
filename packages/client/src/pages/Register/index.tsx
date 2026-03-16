@@ -31,8 +31,8 @@ export const RegisterPage = () => {
     email?: string
     password?: string
     repeatPassword?: string
-    name?: string
-    secondName?: string
+    first_name?: string
+    second_name?: string
     login?: string
     phone?: string
   }>({})
@@ -58,8 +58,8 @@ export const RegisterPage = () => {
         email: emailErr || undefined,
         password: passwordErr || undefined,
         repeatPassword: repeatErr || undefined,
-        name: nameErr || undefined,
-        secondName: secondNameErr || undefined,
+        first_name: nameErr || undefined,
+        second_name: secondNameErr || undefined,
         login: loginErr || undefined,
         phone: phoneErr || undefined,
       })
@@ -167,9 +167,9 @@ export const RegisterPage = () => {
               }))
             }
             autoComplete="given-name"
-            className={errors.name ? 'border-destructive' : ''}
+            className={errors.first_name ? 'border-destructive' : ''}
           />
-          {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+          {errors.first_name && <p className="text-sm text-destructive">{errors.first_name}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-secondName">Фамилия</Label>
@@ -181,13 +181,13 @@ export const RegisterPage = () => {
             onBlur={() =>
               setErrors(prev => ({
                 ...prev,
-                secondName: validateRequired(second_name, 'Фамилия') || undefined,
+                second_name: validateRequired(second_name, 'Фамилия') || undefined,
               }))
             }
             autoComplete="family-name"
-            className={errors.secondName ? 'border-destructive' : ''}
+            className={errors.second_name ? 'border-destructive' : ''}
           />
-          {errors.secondName && <p className="text-sm text-destructive">{errors.secondName}</p>}
+          {errors.second_name && <p className="text-sm text-destructive">{errors.second_name}</p>}
         </div>
 
         <div className="space-y-2">
