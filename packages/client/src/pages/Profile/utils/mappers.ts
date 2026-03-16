@@ -1,27 +1,27 @@
 import type { ProfileFormState } from './validation'
 
 type UserLike = {
-  name?: string | null
-  secondName?: string | null
+  first_name?: string | null
+  second_name?: string | null
   phone?: string | null
   email?: string | null
-  displayName?: string | null
+  display_name?: string | null
 }
 
 export const emptyProfileForm: ProfileFormState = {
-  name: '',
-  secondName: '',
+  first_name: '',
+  second_name: '',
   phone: '',
   email: '',
-  displayName: '',
+  display_name: '',
 }
 
 export function mapUserToProfileForm(user: UserLike): ProfileFormState {
   return {
-    name: user.name ?? '',
-    secondName: user.secondName ?? '',
+    first_name: user.first_name ?? '',
+    second_name: user.second_name ?? '',
     phone: user.phone ?? '',
     email: user.email ?? '',
-    displayName: user.displayName ?? '',
+    display_name: user.display_name ?? '',
   }
 }

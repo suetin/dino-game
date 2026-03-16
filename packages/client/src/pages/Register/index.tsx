@@ -4,11 +4,11 @@ import { useDispatch, useSelector } from '@/store'
 import { registerThunk, selectUser, selectAuthError, clearAuthError } from '@/slices/userSlice'
 import {
   validateEmail,
-  validateLogin,
   validatePassword,
   validatePasswordMatch,
-  validatePhone,
   validateRequired,
+  validatePhone,
+  validateLogin,
 } from '@/lib/validation'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
@@ -25,14 +25,14 @@ export const RegisterPage = () => {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
-  const [name, setName] = useState('')
-  const [secondName, setSecondName] = useState('')
+  const [first_name, setName] = useState('')
+  const [second_name, setSecondName] = useState('')
   const [errors, setErrors] = useState<{
     email?: string
     password?: string
     repeatPassword?: string
-    name?: string
-    secondName?: string
+    first_name?: string
+    second_name?: string
     login?: string
     phone?: string
   }>({})
@@ -49,17 +49,17 @@ export const RegisterPage = () => {
     const emailErr = validateEmail(email)
     const passwordErr = validatePassword(password)
     const repeatErr = validatePasswordMatch(password, repeatPassword)
-    const nameErr = validateRequired(name, 'Имя')
-    const secondNameErr = validateRequired(secondName, 'Фамилия')
-    const loginErr = validateRequired(secondName, 'Фамилия')
-    const phoneErr = validateRequired(secondName, 'Фамилия')
-    if (emailErr || passwordErr || repeatErr || nameErr || secondNameErr || loginErr || phoneErr) {
+    const nameErr = validateRequired(first_name, 'Имя')
+    const secondNameErr = validateRequired(second_name, 'Фамилия')
+    const phoneErr = validatePhone(phone)
+    const loginErr = validateLogin(login)
+    if (emailErr || passwordErr || repeatErr || nameErr || secondNameErr || phoneErr || loginErr) {
       setErrors({
         email: emailErr || undefined,
         password: passwordErr || undefined,
         repeatPassword: repeatErr || undefined,
-        name: nameErr || undefined,
-        secondName: secondNameErr || undefined,
+        first_name: nameErr || undefined,
+        second_name: secondNameErr || undefined,
         login: loginErr || undefined,
         phone: phoneErr || undefined,
       })
@@ -70,10 +70,10 @@ export const RegisterPage = () => {
       registerThunk({
         email: email.trim(),
         password,
-        name: name.trim(),
-        secondName: secondName.trim(),
-        login: login.trim(),
-        phone: phone,
+        first_name: first_name.trim(),
+        second_name: second_name.trim(),
+        login: login,
+        phone: phone.trim(),
       })
     )
   }
@@ -103,17 +103,16 @@ export const RegisterPage = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="register-email">Логин</Label>
+          <Label htmlFor="register-login">Логин</Label>
           <Input
             id="register-login"
-            type="login"
-            placeholder="login"
+            type="text"
             value={login}
             onChange={e => setLogin(e.target.value)}
             onBlur={() =>
               setErrors(prev => ({ ...prev, login: validateLogin(login) || undefined }))
             }
-            autoComplete="login"
+            autoComplete="username"
             className={errors.login ? 'border-destructive' : ''}
           />
           {errors.login && <p className="text-sm text-destructive">{errors.login}</p>}
@@ -159,50 +158,54 @@ export const RegisterPage = () => {
           <Input
             id="register-name"
             type="text"
-            value={name}
+            value={first_name}
             onChange={e => setName(e.target.value)}
             onBlur={() =>
-              setErrors(prev => ({ ...prev, name: validateRequired(name, 'Имя') || undefined }))
+              setErrors(prev => ({
+                ...prev,
+                name: validateRequired(first_name, 'Имя') || undefined,
+              }))
             }
             autoComplete="given-name"
-            className={errors.name ? 'border-destructive' : ''}
+            className={errors.first_name ? 'border-destructive' : ''}
           />
-          {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+          {errors.first_name && <p className="text-sm text-destructive">{errors.first_name}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-secondName">Фамилия</Label>
           <Input
             id="register-secondName"
             type="text"
-            value={secondName}
+            value={second_name}
             onChange={e => setSecondName(e.target.value)}
             onBlur={() =>
               setErrors(prev => ({
                 ...prev,
-                secondName: validateRequired(secondName, 'Фамилия') || undefined,
+                second_name: validateRequired(second_name, 'Фамилия') || undefined,
               }))
             }
             autoComplete="family-name"
-            className={errors.secondName ? 'border-destructive' : ''}
+            className={errors.second_name ? 'border-destructive' : ''}
           />
-          {errors.secondName && <p className="text-sm text-destructive">{errors.secondName}</p>}
+          {errors.second_name && <p className="text-sm text-destructive">{errors.second_name}</p>}
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="register-phone">Телефон</Label>
           <Input
             id="register-phone"
-            type="phone"
-            placeholder="phone"
+            type="tel"
             value={phone}
             onChange={e => setPhone(e.target.value)}
             onBlur={() =>
               setErrors(prev => ({ ...prev, phone: validatePhone(phone) || undefined }))
             }
-            autoComplete="phone"
+            autoComplete="tel"
             className={errors.phone ? 'border-destructive' : ''}
           />
           {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
         </div>
+
         {authError && (
           <p className="text-sm text-destructive bg-destructive/10 p-2 rounded" role="alert">
             {authError}

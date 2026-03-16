@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from '@/store'
-import { loginThunk, selectUser, selectAuthError, clearAuthError } from '@/slices/userSlice'
-import { validatePassword } from '@/lib/validation'
+import {
+  loginThunk,
+  fetchUserThunk,
+  selectUser,
+  selectAuthError,
+  clearAuthError,
+} from '@/slices/userSlice'
+import { validateLogin, validatePassword } from '@/lib/validation'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ROUTES } from '@/config/routes'
+import { OAuthButton } from '@/components/OAuthButton'
 
 export const LoginPage = () => {
   const dispatch = useDispatch()
@@ -34,10 +41,8 @@ export const LoginPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    const loginErr = login.trim() ? '' : 'Логин обязателен'
+    const loginErr = validateLogin(login)
     const passwordErr = validatePassword(password)
-
     if (loginErr || passwordErr) {
       setErrors({
         login: loginErr || undefined,
@@ -47,11 +52,21 @@ export const LoginPage = () => {
     }
 
     setErrors({})
-    dispatch(loginThunk({ login: login.trim(), password }))
+
+    // Новая двухшаговая логика
+    dispatch(loginThunk({ login: login, password }))
+      .unwrap()
+      .then(() => {
+        // После успешного логина, запрашиваем данные пользователя
+        return dispatch(fetchUserThunk()).unwrap()
+      })
+      .catch(err => {
+        // Ошибка будет обработана в extraReducers и отображена через selectAuthError
+        console.error('Login failed:', err)
+      })
   }
 
   if (user) {
-    // Пока происходит редирект, ничего не рендерим
     return null
   }
 
@@ -61,20 +76,16 @@ export const LoginPage = () => {
       <h1 className="text-2xl font-bold mb-4">Вход</h1>
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 text-left">
         <div className="space-y-2">
-          <Label htmlFor="login-name">Логин</Label>
+          <Label htmlFor="login-email">Логин</Label>
           <Input
-            id="login-name"
-            type="text"
-            placeholder="Введите логин"
+            id="login"
+            type="login"
             value={login}
             onChange={e => setLogin(e.target.value)}
             onBlur={() =>
-              setErrors(prev => ({
-                ...prev,
-                login: login.trim() ? undefined : 'Логин обязателен',
-              }))
+              setErrors(prev => ({ ...prev, login: validateLogin(login) || undefined }))
             }
-            autoComplete="username"
+            autoComplete="email"
             className={errors.login ? 'border-destructive' : ''}
           />
           {errors.login && <p className="text-sm text-destructive">{errors.login}</p>}
@@ -104,6 +115,20 @@ export const LoginPage = () => {
           Войти
         </Button>
       </form>
+
+      <div className="relative my-4 w-full max-w-sm">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">Или продолжить с</span>
+        </div>
+      </div>
+
+      <div className="w-full max-w-sm">
+        <OAuthButton />
+      </div>
+
       <p className="mt-4 text-sm text-muted-foreground">
         Нет аккаунта?{' '}
         <Link to={ROUTES.REGISTER} className="text-primary underline underline-offset-2">

@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
-import { SERVER_HOST } from '@/constants'
+import { SERVER_HOST, REDIRECT_URI } from '@/constants'
 
 // --- Types ---
 
@@ -8,8 +8,8 @@ export type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
 
 export interface User {
   id?: string
-  name: string
-  secondName: string
+  first_name: string
+  second_name: string
   phone?: string
   avatarUrl?: string | null
   email?: string
@@ -23,6 +23,7 @@ export interface UserState {
   isLoading: boolean
   authError: string | null
   error: string | null
+  serviceId: string | null
 
   updateStatus: RequestStatus
   avatarStatus: RequestStatus
@@ -33,11 +34,10 @@ const initialState: UserState = {
   isLoading: true,
   authError: null,
   error: null,
+  serviceId: null,
   updateStatus: 'idle',
   avatarStatus: 'idle',
 }
-
-const PRAKTIKUM_API_URL = 'https://ya-praktikum.tech/api/v2'
 
 type PraktikumUser = {
   id: number
@@ -52,8 +52,8 @@ type PraktikumUser = {
 
 const mapPraktikumUser = (user: PraktikumUser): User => ({
   id: String(user.id),
-  name: user.first_name,
-  secondName: user.second_name,
+  first_name: user.first_name,
+  second_name: user.second_name,
   displayName: user.display_name ?? '',
   login: user.login,
   email: user.email,
@@ -61,24 +61,30 @@ const mapPraktikumUser = (user: PraktikumUser): User => ({
   avatarUrl: user.avatar ? `https://ya-praktikum.tech/api/v2/resources/${user.avatar}` : null,
 })
 
+const fetchOptions = {
+  credentials: 'include' as const,
+}
+
+const postJsonOptions = {
+  ...fetchOptions,
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+}
+
 // --- Thunks ---
 
 // 1. FETCH USER
 export const fetchUserThunk = createAsyncThunk(
   'user/fetchUserThunk',
   async (_, { rejectWithValue }) => {
-    const res = await fetch(`${PRAKTIKUM_API_URL}/auth/user`, {
-      method: 'GET',
-      credentials: 'include',
-    })
-
+    const url = `${SERVER_HOST}/auth/user`
+    const res = await fetch(url, fetchOptions)
     if (!res.ok) {
+      const text = await res.text()
       if (res.status === 401) {
         return rejectWithValue('Unauthorized')
       }
-
-      const errorData = await res.json().catch(() => ({}))
-      return rejectWithValue(errorData.reason || `Ошибка ${res.status}`)
+      throw new Error(text || `Ошибка ${res.status}`)
     }
 
     const user = (await res.json()) as PraktikumUser
@@ -87,105 +93,56 @@ export const fetchUserThunk = createAsyncThunk(
 )
 
 // 2. LOGIN
-export interface LoginCredentials {
-  login: string
-  password: string
-}
 export const loginThunk = createAsyncThunk(
   'user/login',
-  async (credentials: LoginCredentials, { rejectWithValue }) => {
-    const res = await fetch(`${PRAKTIKUM_API_URL}/auth/signin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+  async (credentials: { login: string; password: string }, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/auth/signin`, {
+      ...postJsonOptions,
       body: JSON.stringify(credentials),
     })
-
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       return rejectWithValue(data.reason || `Ошибка входа ${res.status}`)
     }
-
-    const userRes = await fetch(`${PRAKTIKUM_API_URL}/auth/user`, {
-      method: 'GET',
-      credentials: 'include',
-    })
-
-    if (!userRes.ok) {
-      const data = await userRes.json().catch(() => ({}))
-      return rejectWithValue(data.reason || `Ошибка получения пользователя ${userRes.status}`)
-    }
-
-    const user = (await userRes.json()) as PraktikumUser
-    return mapPraktikumUser(user)
+    return {} as User
   }
 )
 
 // 3. REGISTER
-
-export interface RegisterPayload {
-  email: string
-  password: string
-  name: string
-  secondName: string
-  login?: string
-  phone?: string
-}
-
 export const registerThunk = createAsyncThunk(
   'user/register',
-  async (payload: RegisterPayload, { rejectWithValue }) => {
-    const signupRes = await fetch(`${PRAKTIKUM_API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        first_name: payload.name,
-        second_name: payload.secondName,
-        login: payload.login,
-        email: payload.email,
-        password: payload.password,
-        phone: payload.phone,
-      }),
+  async (
+    payload: {
+      email: string
+      password: string
+      first_name: string
+      second_name: string
+      login: string
+      phone: string
+    },
+    { rejectWithValue }
+  ) => {
+    const res = await fetch(`${SERVER_HOST}/auth/signup`, {
+      ...postJsonOptions,
+      body: JSON.stringify(payload),
     })
-
-    if (!signupRes.ok) {
-      const data = await signupRes.json().catch(() => ({}))
-      return rejectWithValue(data.reason || `Ошибка регистрации ${signupRes.status}`)
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка регистрации ${res.status}`)
     }
-
-    const userRes = await fetch(`${PRAKTIKUM_API_URL}/auth/user`, {
-      method: 'GET',
-      credentials: 'include',
-    })
-
-    if (!userRes.ok) {
-      const data = await userRes.json().catch(() => ({}))
-      return rejectWithValue(data.reason || `Ошибка получения пользователя ${userRes.status}`)
-    }
-
-    const user = (await userRes.json()) as PraktikumUser
-    return mapPraktikumUser(user)
+    return { id: (await res.json()).id } as User
   }
 )
 
 // 4. LOGOUT
-export const logoutThunk = createAsyncThunk('user/logout', async (_, { rejectWithValue }) => {
-  const res = await fetch(`${PRAKTIKUM_API_URL}/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-  })
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    return rejectWithValue(data.reason || `Ошибка выхода ${res.status}`)
-  }
+export const logoutThunk = createAsyncThunk('user/logout', async () => {
+  await fetch(`${SERVER_HOST}/auth/logout`, { ...postJsonOptions })
 })
 
 // 5. UPDATE USER
 export const updateUserThunk = createAsyncThunk<
   User,
-  { name: string; secondName: string; phone: string; email: string; displayName: string }
+  { first_name: string; second_name: string; phone: string; email: string; display_name: string }
 >('user/updateUserThunk', async payload => {
   const res = await fetch(`${SERVER_HOST}/user/profile`, {
     method: 'PUT',
@@ -204,9 +161,8 @@ export const uploadAvatarThunk = createAsyncThunk<User, File>(
   async file => {
     const formData = new FormData()
     formData.append('avatar', file)
-
-    // Внимание: для FormData не нужно ставить Content-Type header вручную, браузер сам поставит boundary
     const res = await fetch(`${SERVER_HOST}/user/profile/avatar`, {
+      ...fetchOptions,
       method: 'PUT',
       body: formData,
     })
@@ -220,6 +176,7 @@ export const uploadAvatarThunk = createAsyncThunk<User, File>(
 // 7. DELETE AVATAR
 export const deleteAvatarThunk = createAsyncThunk<User>('user/deleteAvatarThunk', async () => {
   const res = await fetch(`${SERVER_HOST}/user/profile/avatar`, {
+    ...fetchOptions,
     method: 'DELETE',
   })
   if (!res.ok) {
@@ -227,6 +184,43 @@ export const deleteAvatarThunk = createAsyncThunk<User>('user/deleteAvatarThunk'
   }
   return res.json() as Promise<User>
 })
+
+// 8. OAUTH - GET SERVICE ID
+export const fetchServiceIdThunk = createAsyncThunk<string>(
+  'user/fetchServiceId',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch(
+        `${SERVER_HOST}/oauth/yandex/service-id?redirect_uri=${REDIRECT_URI}`,
+        fetchOptions
+      )
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        return rejectWithValue(errorData.reason || `Ошибка получения service_id: ${res.status}`)
+      }
+      const data = await res.json()
+      return data.service_id
+    } catch (error) {
+      return rejectWithValue('Сетевая ошибка или невалидный JSON при получении service_id')
+    }
+  }
+)
+
+// 9. OAUTH - LOGIN
+export const oauthLoginThunk = createAsyncThunk<void, string>(
+  'user/oauthLogin',
+  async (code, { rejectWithValue }) => {
+    const res = await fetch(`${SERVER_HOST}/oauth/yandex`, {
+      ...postJsonOptions,
+      body: JSON.stringify({ code, redirect_uri: REDIRECT_URI }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      return rejectWithValue(data.reason || `Ошибка OAuth ${res.status}`)
+    }
+  }
+)
 
 // --- Slice ---
 
@@ -256,13 +250,9 @@ export const userSlice = createSlice({
       })
       .addCase(fetchUserThunk.rejected, (state, action) => {
         state.isLoading = false
-        if (action.payload === 'Unauthorized' || action.payload === 'User not found') {
-          state.data = null
-        }
-
+        state.data = null
         if (action.payload !== 'Unauthorized' && action.payload !== 'User not found') {
-          state.error =
-            (action.payload as string) || action.error.message || 'Ошибка загрузки данных'
+          state.authError = (action.payload as string) || action.error.message || 'Ошибка'
         }
       })
 
@@ -270,8 +260,7 @@ export const userSlice = createSlice({
       .addCase(loginThunk.pending, state => {
         state.authError = null
       })
-      .addCase(loginThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
-        state.data = payload
+      .addCase(loginThunk.fulfilled, state => {
         state.authError = null
       })
       .addCase(loginThunk.rejected, (state, action) => {
@@ -293,6 +282,26 @@ export const userSlice = createSlice({
       // LOGOUT
       .addCase(logoutThunk.fulfilled, state => {
         state.data = null
+      })
+
+      // OAUTH - SERVICE ID
+      .addCase(fetchServiceIdThunk.fulfilled, (state, { payload }: PayloadAction<string>) => {
+        state.serviceId = payload
+      })
+      .addCase(fetchServiceIdThunk.rejected, (state, action) => {
+        console.error('OAuth Service ID Error:', action.payload)
+        state.serviceId = null
+      })
+
+      // OAUTH - LOGIN
+      .addCase(oauthLoginThunk.pending, state => {
+        state.authError = null
+      })
+      .addCase(oauthLoginThunk.fulfilled, state => {
+        state.authError = null
+      })
+      .addCase(oauthLoginThunk.rejected, (state, action) => {
+        state.authError = (action.payload as string) || action.error.message || 'Ошибка OAuth'
       })
 
       // UPDATE
