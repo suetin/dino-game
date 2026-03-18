@@ -28,6 +28,7 @@ import {
 import { DefaultAvatarIcon } from '@/pages/Profile/ui/DefaultAvatarIcon'
 import { emptyProfileForm, mapUserToProfileForm } from '@/pages/Profile/utils/mappers'
 import { validateAvatarFile } from '@/pages/Profile/utils/avatar.utils'
+import { useGeolocation } from '@/hooks/useGeolocation'
 
 const ProfilePage = () => {
   const dispatch = useDispatch()
@@ -44,6 +45,8 @@ const ProfilePage = () => {
   const [form, setForm] = useState<ProfileFormState>(emptyProfileForm)
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  const { coordinates, error: geoError, isLoading: geoLoading, getLocation } = useGeolocation()
 
   useEffect(() => {
     if (!user) return
@@ -302,6 +305,33 @@ const ProfilePage = () => {
               )}
             </CardFooter>
           </form>
+
+          <div className="space-y-2 py-4 border-t border-border">
+            <h3>Местоположение:</h3>
+            <div className="text-muted-foreground text-sm">
+              {coordinates ? (
+                <div>
+                  Широта: {coordinates.latitude.toFixed(4)}, Долгота:{' '}
+                  {coordinates.longitude.toFixed(4)}
+                  <br />
+                  <a
+                    href={`https://www.google.com/maps?q=${coordinates.latitude},${coordinates.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-accent hover:underline">
+                    Показать на карте
+                  </a>
+                </div>
+              ) : geoError ? (
+                <div className="text-accent">Ошибка: {geoError.message}</div>
+              ) : (
+                <div>Не определено</div>
+              )}
+            </div>
+            <Button type="button" size="sm" onClick={getLocation} disabled={geoLoading}>
+              {geoLoading ? 'Определяем...' : 'Определить местоположение'}
+            </Button>
+          </div>
         </Card>
       )}
     </WrapperContent>
