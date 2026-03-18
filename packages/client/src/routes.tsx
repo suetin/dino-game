@@ -1,7 +1,7 @@
 import { Layout } from './components/Layout'
 import { GameLayout } from './components/GameLayout'
 import { RequireAuth } from './hocs/RequireAuth'
-import { MainPage } from './pages/Main'
+import { MainPage, initMainPage } from './pages/Main'
 import { initGamePage, GamePage } from './pages/Game'
 import { initNotFoundPage, NotFoundPage } from './pages/NotFound'
 import { LoginPage } from './pages/Login'
@@ -31,6 +31,7 @@ export const routes = [
       {
         index: true,
         element: <MainPage />,
+        fetchData: initMainPage,
       },
       {
         path: ROUTES.LOGIN,
