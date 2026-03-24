@@ -31,4 +31,4 @@ yarn dev --scope=client
 
 ## Production (Docker)
 
-Перед первым запуском: `node init.js`. Затем: `docker compose up`. Подробнее в [README](../README.md#окружение-в-docker).
+Запуск: `docker compose up --build` из корня репозитория. Опционально перед локальной разработкой без Docker: `node init.js` (создаст `.env` из `.env.example`, если файла ещё нет, и `tmp/pgdata`). Чеклист проверки и описание переменных — в [README](../README.md#окружение-в-docker).

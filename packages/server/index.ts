@@ -87,13 +87,12 @@ const start = async () => {
       app.use('/api/forum/comments', commentRouter)
 
       await connectDB()
-      console.log('  ➜ Database connected')
     } else {
-      console.log('  ➜ Running without database (SKIP_DB=true)')
+      console.log('[server] SKIP_DB=true — база не подключается')
     }
 
     app.listen(port, () => {
-      console.log(`  ➜  Server is listening on port: ${port}`)
+      console.log(`[server] Слушаю порт ${port}`)
     })
   } catch (error) {
     console.error('Failed to start server:', error)
