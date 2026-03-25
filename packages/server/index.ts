@@ -2,12 +2,19 @@ import './loadEnv'
 import 'reflect-metadata'
 import express, { Request, Response } from 'express'
 import cors from 'cors'
+import { createSession, destroySession } from './auth/session'
+import { requireAuth } from './middleware/requireAuth'
 
 const app = express()
 const port = Number(process.env.SERVER_PORT) || 3001
 const skipDB = process.env.SKIP_DB === 'true'
 
-app.use(cors())
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+)
 app.use(express.json())
 
 // MOCK DATA
@@ -39,6 +46,7 @@ app.post('/auth/login', (req: Request, res: Response) => {
   if (!email || !password) {
     return res.status(400).json({ message: 'Email и пароль обязательны' })
   }
+  createSession(res)
   return res.json(MOCK_USER)
 })
 
@@ -47,10 +55,12 @@ app.post('/auth/register', (req: Request, res: Response) => {
   if (!email || !password || !name || !secondName) {
     return res.status(400).json({ message: 'Заполните все поля: email, пароль, имя, фамилия' })
   }
+  createSession(res)
   return res.status(201).json({ ...MOCK_USER, name, secondName, email })
 })
 
-app.post('/auth/logout', (_req: Request, res: Response) => {
+app.post('/auth/logout', (req: Request, res: Response) => {
+  destroySession(req, res)
   res.sendStatus(200)
 })
 
@@ -83,17 +93,17 @@ const start = async () => {
       const { topicRouter } = await import('./routes/topicRouter')
       const { commentRouter } = await import('./routes/commentRouter')
 
-      app.use('/api/forum/topics', topicRouter)
-      app.use('/api/forum/comments', commentRouter)
+      app.use('/api/forum/topics', requireAuth, topicRouter)
+      app.use('/api/forum/comments', requireAuth, commentRouter)
 
       await connectDB()
-      console.log('  ➜ Database connected')
+      console.log('[server] База подключена')
     } else {
-      console.log('  ➜ Running without database (SKIP_DB=true)')
+      console.log('[server] SKIP_DB=true — база не подключается')
     }
 
     app.listen(port, () => {
-      console.log(`  ➜  Server is listening on port: ${port}`)
+      console.log(`[server] Слушаю порт ${port}`)
     })
   } catch (error) {
     console.error('Failed to start server:', error)
