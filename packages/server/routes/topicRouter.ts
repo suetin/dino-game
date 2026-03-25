@@ -4,72 +4,63 @@ import { Comment } from '../models/Comment'
 
 export const topicRouter = Router()
 
-// GET /api/forum/topics - Получить все темы
-topicRouter.get('/', async (_req: Request, res: Response) => {
+topicRouter.get('/', async (req: Request, res: Response) => {
   try {
     const topics = await Topic.findAll()
-    return res.json(topics)
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка сервера' })
+    res.json(topics)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch topics' })
   }
 })
 
-// POST /api/forum/topics - Создать тему
 topicRouter.post('/', async (req: Request, res: Response) => {
   try {
     const { title, description, author_id } = req.body
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      return res.status(400).json({ error: 'Заголовок обязателен' })
-    }
-    const newTopic = await Topic.create({ title, description, author_id })
-    return res.status(201).json(newTopic)
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка при создании темы' })
+    const topic = await Topic.create({ title, description, author_id })
+    res.json(topic)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create topic' })
   }
 })
 
-// GET /api/forum/topics/:id - Одна тема + комменты
 topicRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const topic = await Topic.findByPk(req.params.id, {
-      include: [
-        {
-          model: Comment,
-          where: { parentId: null },
-          required: false,
-          include: [{ model: Comment, as: 'replies' }],
-        },
-      ],
+      include: [Comment],
     })
-    if (!topic) return res.status(404).json({ error: 'Тема не найдена' })
-    return res.json(topic)
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка сервера' })
+    if (!topic) {
+      res.status(404).json({ error: 'Topic not found' })
+      return
+    }
+    res.json(topic)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch topic' })
   }
 })
 
-// PUT /api/forum/topics/:id - Обновить
-topicRouter.put('/:id', async (req: Request, res: Response) => {
+topicRouter.get('/:id/comments', async (req: Request, res: Response) => {
   try {
-    const [updatedCount] = await Topic.update(req.body, {
-      where: { id: req.params.id },
+    const comments = await Comment.findAll({
+      where: { topic_id: req.params.id, parentId: null },
+      include: [{ all: true, nested: true }],
     })
-    if (updatedCount === 0)
-      return res.status(404).json({ error: 'Тема не найдена' })
-    return res.json({ message: 'Тема обновлена' })
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка при обновлении' })
+    res.json(comments)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch comments' })
   }
 })
 
-// DELETE /api/forum/topics/:id - Удалить
-topicRouter.delete('/:id', async (req: Request, res: Response) => {
+topicRouter.post('/:id/comments', async (req: Request, res: Response) => {
   try {
-    const deletedCount = await Topic.destroy({ where: { id: req.params.id } })
-    if (deletedCount === 0)
-      return res.status(404).json({ error: 'Тема не найдена' })
-    return res.json({ message: 'Тема удалена' })
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка при удалении' })
+    const { content, author_id, parentId } = req.body
+    const comment = await Comment.create({
+      content,
+      author_id,
+      topic_id: Number(req.params.id),
+      parentId: parentId || null,
+    })
+    res.json(comment)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create comment' })
   }
 })

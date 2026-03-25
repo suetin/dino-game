@@ -8,8 +8,8 @@ import {
   HasMany,
 } from 'sequelize-typescript'
 import { Topic } from './Topic'
+import { Reaction } from './Reaction'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 @Table({ tableName: 'comments' })
 export class Comment extends Model {
   @Column({ type: DataType.TEXT, allowNull: false })
@@ -29,6 +29,9 @@ export class Comment extends Model {
   @BelongsTo(() => Topic)
   topic!: Topic
 
-  @HasMany(() => Comment, { foreignKey: 'parentId', as: 'replies' })
+  @HasMany(() => Comment)
   replies!: Comment[]
+
+  @HasMany(() => Reaction)
+  reactions!: Reaction[]
 }
