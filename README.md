@@ -207,15 +207,22 @@ yarn build
 
 ### Окружение в Docker
 
-Перед первым запуском выполните `node init.js`.
+Перед первым запуском выполните `node init.js` (создаст `.env` из `.env.example` или `.env.sample`, если файла ещё нет).
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
-Запускаются три сервиса: nginx (клиентская статика), node (сервер), postgres (БД).
+Сервисы: `client` (`CLIENT_PORT`, по умолчанию 3000), `server` (`SERVER_PORT`, по умолчанию 3001), `db` (PostgreSQL 14, внутри сети `db:5432`). Секреты и параметры — только через переменные окружения (см. `.env.example`).
 
-Один сервис: `docker compose up {service_name}`, например `docker compose up server`.
+Проверка после старта:
+
+```bash
+docker compose ps
+docker compose logs server --tail 50
+```
+
+Один сервис: `docker compose up --build server`, например для отладки.
 
 ### Автодеплой статики на Vercel
 

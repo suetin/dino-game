@@ -31,4 +31,11 @@ yarn dev --scope=client
 
 ## Production (Docker)
 
-Перед первым запуском: `node init.js`. Затем: `docker compose up`. Подробнее в [README](../README.md#окружение-в-docker).
+Перед первым запуском: `node init.js`. Затем: `docker compose up --build`. Подробнее в [README](../README.md#окружение-в-docker).
+
+Проверка:
+
+```bash
+docker compose ps
+docker compose logs server --tail 50
+```
