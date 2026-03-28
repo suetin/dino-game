@@ -17,7 +17,6 @@ app.use(
 )
 app.use(express.json())
 
-// MOCK DATA
 const MOCK_USER = {
   id: '1',
   name: 'Степа',
@@ -64,17 +63,12 @@ app.post('/auth/logout', (req: Request, res: Response) => {
   res.sendStatus(200)
 })
 
-// Profile Update (Mock)
 app.put('/user/profile', (req: Request, res: Response) => {
   const data = req.body
-  // В реальности тут был бы апдейт базы
   return res.json({ ...MOCK_USER, ...data })
 })
 
-// Avatar Update (Mock - без реальной загрузки файла пока)
 app.put('/user/profile/avatar', (_req: Request, res: Response) => {
-  // Тут должна быть обработка FormData
-  // Возвращаем заглушку
   return res.json({ ...MOCK_USER, avatarUrl: '/path/to/avatar.jpg' })
 })
 
