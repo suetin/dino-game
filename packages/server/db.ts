@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize-typescript'
 import { Topic } from './models/Topic'
 import { Comment } from './models/Comment'
+import { Reaction } from './models/Reaction'
 
 const {
   DATABASE_URL,
@@ -21,7 +22,7 @@ if (!hasDatabaseUrl && (!POSTGRES_USER || !POSTGRES_PASSWORD || !POSTGRES_DB || 
 const sequelize = hasDatabaseUrl
   ? new Sequelize(databaseUrl, {
       dialect: 'postgres',
-      models: [Topic, Comment],
+      models: [Topic, Comment, Reaction],
       logging: false,
     })
   : new Sequelize({
@@ -31,7 +32,7 @@ const sequelize = hasDatabaseUrl
       username: POSTGRES_USER,
       password: POSTGRES_PASSWORD,
       database: POSTGRES_DB,
-      models: [Topic, Comment],
+      models: [Topic, Comment, Reaction],
       logging: false,
     })
 
