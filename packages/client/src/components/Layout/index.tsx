@@ -5,44 +5,44 @@ import { Footer } from '../Footer'
 import { useDispatch } from '@/store'
 import { fetchUserThunk, oauthLoginThunk } from '@/slices/userSlice'
 import { ROUTES } from '@/config/routes'
-import { ClientOnly } from '@/components/ClientOnly'
 
 export const Layout = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  useEffect(() => {
-    const code = searchParams.get('code')
+  const code = searchParams.get('code')
 
+  useEffect(() => {
     if (code) {
-      dispatch(oauthLoginThunk(code))
-        .unwrap()
-        .then(() => {
-          // После успешного обмена кода на сессию, запрашиваем данные пользователя
-          return dispatch(fetchUserThunk()).unwrap()
-        })
-        .then(() => {
-          // Данные получены, перенаправляем в профиль
-          navigate(ROUTES.PROFILE, { replace: true })
-        })
-        .catch(err => {
-          console.error('OAuth Error:', err)
-          // Если что-то пошло не так, отправляем на страницу логина
-          navigate(ROUTES.LOGIN, { replace: true })
-        })
-    } else {
-      // Сценарий 2: Обычная загрузка страницы.
-      // Просто проверяем, есть ли у нас действующая сессия.
-      dispatch(fetchUserThunk())
+      return
     }
-  }, [])
+
+    dispatch(fetchUserThunk())
+  }, [code, dispatch])
+
+  useEffect(() => {
+    if (!code) {
+      return
+    }
+
+    const handleOAuthCallback = async () => {
+      try {
+        await dispatch(oauthLoginThunk(code)).unwrap()
+        await dispatch(fetchUserThunk()).unwrap()
+        navigate(ROUTES.PROFILE, { replace: true })
+      } catch (err) {
+        console.error('OAuth Error:', err)
+        navigate(ROUTES.LOGIN, { replace: true })
+      }
+    }
+
+    handleOAuthCallback()
+  }, [code, dispatch, navigate])
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300">
-      <ClientOnly>
-        <Header />
-      </ClientOnly>
+      <Header />
       <main className="flex-1 flex flex-col items-center justify-start p-4">
         <Outlet />
       </main>
