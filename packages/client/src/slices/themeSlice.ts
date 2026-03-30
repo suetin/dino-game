@@ -1,70 +1,69 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
+import { AppTheme, THEMES, applyTheme, isDarkLikeTheme } from '@/lib/theme'
+import { loadThemePreference, saveThemePreference } from '@/lib/themeService'
 
 interface ThemeState {
-  isDarkMode: boolean
-}
-
-// Эта функция работает только при инициализации скрипта (до создания стора)
-const getInitialTheme = (): boolean => {
-  if (typeof window !== 'undefined') {
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme) {
-      return savedTheme === 'dark'
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  }
-  return false
+  theme: AppTheme
+  isLoading: boolean
 }
 
 const initialState: ThemeState = {
-  isDarkMode: getInitialTheme(),
+  theme: 'light',
+  isLoading: false,
 }
+
+// --- THUNKS ---
+
+export const initThemeThunk = createAsyncThunk('theme/initTheme', async () => {
+  const theme = await loadThemePreference()
+  applyTheme(theme)
+  return theme
+})
+
+export const setThemeThunk = createAsyncThunk('theme/setTheme', async (theme: AppTheme) => {
+  await saveThemePreference(theme)
+  applyTheme(theme)
+  return theme
+})
+
+// --- SLICE ---
 
 export const themeSlice = createSlice({
   name: 'theme',
   initialState,
   reducers: {
-    toggleTheme: state => {
-      state.isDarkMode = !state.isDarkMode
+    toggleTheme(state) {
+      const currentIndex = THEMES.indexOf(state.theme)
+      const nextTheme = THEMES[(currentIndex + 1) % THEMES.length]
 
-      if (typeof window !== 'undefined') {
-        const root = window.document.documentElement
-        if (state.isDarkMode) {
-          root.classList.add('dark')
-          localStorage.setItem('theme', 'dark')
-        } else {
-          root.classList.remove('dark')
-          localStorage.setItem('theme', 'light')
-        }
-      }
+      state.theme = nextTheme
+      applyTheme(nextTheme)
+      saveThemePreference(nextTheme)
     },
-    initTheme: state => {
-      if (typeof window !== 'undefined') {
-        // Читаем актуальное значение из хранилища
-        const savedTheme = localStorage.getItem('theme')
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  },
+  extraReducers: builder => {
+    builder
+      .addCase(initThemeThunk.pending, state => {
+        state.isLoading = true
+      })
+      .addCase(initThemeThunk.fulfilled, (state, action: PayloadAction<AppTheme>) => {
+        state.isLoading = false
+        state.theme = action.payload
+      })
+      .addCase(initThemeThunk.rejected, state => {
+        state.isLoading = false
+      })
 
-        // Определяем, должна ли быть темная тема
-        const shouldBeDark = savedTheme ? savedTheme === 'dark' : systemDark
-
-        // Обновляем стейт
-        state.isDarkMode = shouldBeDark
-
-        // Применяем класс
-        const root = window.document.documentElement
-        if (shouldBeDark) {
-          root.classList.add('dark')
-        } else {
-          root.classList.remove('dark')
-        }
-      }
-    },
+      .addCase(setThemeThunk.fulfilled, (state, action: PayloadAction<AppTheme>) => {
+        state.theme = action.payload
+      })
   },
 })
 
-export const { toggleTheme, initTheme } = themeSlice.actions
+export const { toggleTheme } = themeSlice.actions
 
-export const selectIsDarkMode = (state: RootState) => state.theme.isDarkMode
+export const selectTheme = (state: RootState) => state.theme.theme
+export const selectIsDarkMode = (state: RootState) => isDarkLikeTheme(state.theme.theme)
 
 export default themeSlice.reducer
