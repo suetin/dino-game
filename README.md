@@ -207,15 +207,13 @@ yarn build
 
 ### Окружение в Docker
 
-**Одна команда запуска всего стека** (нужен запущенный Docker Desktop / daemon):
+**Одна команда запуска всего стека** (нужен запущенный Docker Desktop / daemon). Перед первым запуском по желанию выполните `node init.js` — создаст `.env` из [`.env.example`](.env.example), если файла ещё нет, и каталог `tmp/pgdata` для данных PostgreSQL.
 
 ```bash
 docker compose up --build
 ```
 
-Файл `.env` для compose **не обязателен**: для `DB_*`, `CLIENT_PORT`, `SERVER_PORT`, `POSTGRES_PORT` заданы безопасные значения по умолчанию (локальная разработка). Секреты в репозиторий не кладём: в git есть только [`.env.example`](.env.example), а `.env` перечислен в `.gitignore`.
-
-Чтобы завести локальный `.env` под разработку без Docker, можно выполнить `node init.js` (создаст `.env` из `.env.example` **только если** `.env` ещё нет) и каталог `tmp/pgdata` для тома PostgreSQL.
+Файл `.env` для compose **не обязателен**: для `DB_*`, `CLIENT_PORT`, `SERVER_PORT`, `POSTGRES_PORT` заданы безопасные значения по умолчанию (локальная разработка). Секреты в репозиторий не кладём: в git есть только `.env.example`, а `.env` перечислен в `.gitignore`.
 
 **Сервисы в `docker-compose.yml`:** `db` (PostgreSQL 14), `server` (Node API), `client` (SSR Node + статика). Связи: `server` ждёт готовности `db` (`depends_on` + `service_healthy`), `client` стартует после `server`. Внутри сети compose PostgreSQL доступен как хост **`db`**, порт **5432**; наружу БД пробрасывается на `POSTGRES_PORT` хоста (по умолчанию 5432).
 
@@ -228,6 +226,13 @@ docker compose up --build
 3. Логи API: `docker compose logs server` — есть строка с режимом `[db] Режим подключения: DATABASE_URL ... (хост db, ...)` и `[db] Подключение к PostgreSQL установлено...`.
 4. Проверка HTTP: `curl -s -o NUL -w "%{http_code}" http://localhost:3001/` (или ваш `SERVER_PORT`) ожидается `200`.
 5. Клиент в браузере: `http://localhost:3000` (или ваш `CLIENT_PORT`) открывается без ошибки контейнера `client` в логах.
+
+Быстрая проверка после старта:
+
+```bash
+docker compose ps
+docker compose logs server --tail 50
+```
 
 Если `server` стартует раньше готовности Postgres, compose не отпустит его до `healthy` у `db`; при ручном запуске только `server` без `db` приложение завершится с ошибкой подключения — это ожидаемо.
 

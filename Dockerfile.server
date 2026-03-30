@@ -27,5 +27,7 @@ COPY --from=builder /app/packages/server/dist/ /app/
 COPY --from=builder /app/packages/server/package.json /app/package.json
 RUN yarn install --production=true
 
+ENV SERVER_PORT=$SERVER_PORT
+
 EXPOSE $SERVER_PORT
 CMD [ "node", "/app/index.js" ]

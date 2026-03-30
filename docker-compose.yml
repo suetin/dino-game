@@ -1,31 +1,26 @@
 services:
-  client:
-    container_name: prakticum-client
-    image: prakticum-client
-    build:
-      context: .
-      dockerfile: Dockerfile.client
-      args:
-        CLIENT_PORT: ${CLIENT_PORT:-3000}
-        SERVER_PORT: ${SERVER_PORT:-3001}
-        EXTERNAL_SERVER_URL: ${EXTERNAL_SERVER_URL:-http://localhost:${SERVER_PORT:-3001}}
-        INTERNAL_SERVER_URL: ${INTERNAL_SERVER_URL:-http://server:${SERVER_PORT:-3001}}
+  db:
+    container_name: dino-db
+    image: postgres:14
     restart: unless-stopped
     ports:
-      - "${CLIENT_PORT:-3000}:${CLIENT_PORT:-3000}"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      NODE_ENV: production
-      LOAD_DOTENV_FILE: "0"
-      PORT: ${CLIENT_PORT:-3000}
-      SERVER_PORT: ${SERVER_PORT:-3001}
-      INTERNAL_SERVER_URL: ${INTERNAL_SERVER_URL:-http://server:${SERVER_PORT:-3001}}
-      EXTERNAL_SERVER_URL: ${EXTERNAL_SERVER_URL:-http://localhost:${SERVER_PORT:-3001}}
-    depends_on:
-      - server
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-postgres}
+    volumes:
+      - ./tmp/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   server:
-    container_name: prakticum-server
-    image: prakticum-server
+    container_name: dino-server
+    image: dino-server
     build:
       context: .
       dockerfile: Dockerfile.server
@@ -48,21 +43,26 @@ services:
       db:
         condition: service_healthy
 
-  db:
-    image: postgres:14
-    container_name: prakticum-db
+  client:
+    container_name: dino-client
+    image: dino-client
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+      args:
+        CLIENT_PORT: ${CLIENT_PORT:-3000}
+        SERVER_PORT: ${SERVER_PORT:-3001}
+        EXTERNAL_SERVER_URL: ${EXTERNAL_SERVER_URL:-http://localhost:${SERVER_PORT:-3001}}
+        INTERNAL_SERVER_URL: ${INTERNAL_SERVER_URL:-http://server:${SERVER_PORT:-3001}}
     restart: unless-stopped
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${CLIENT_PORT:-3000}:${CLIENT_PORT:-3000}"
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-postgres}
-    volumes:
-      - ./tmp/pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      NODE_ENV: production
+      LOAD_DOTENV_FILE: "0"
+      PORT: ${CLIENT_PORT:-3000}
+      SERVER_PORT: ${SERVER_PORT:-3001}
+      INTERNAL_SERVER_URL: ${INTERNAL_SERVER_URL:-http://server:${SERVER_PORT:-3001}}
+      EXTERNAL_SERVER_URL: ${EXTERNAL_SERVER_URL:-http://localhost:${SERVER_PORT:-3001}}
+    depends_on:
+      - server
