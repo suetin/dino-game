@@ -39,7 +39,12 @@ export const LeaderboardPage = () => {
   const hasMore = useSelector(selectLeaderboardHasMore)
 
   const currentPlayerName = normalizePlayerName(
-    user?.displayName || user?.name || user?.login || user?.email || user?.userName || 'Anonymous'
+    user?.displayName ||
+      [user?.first_name, user?.second_name].filter(Boolean).join(' ').trim() ||
+      user?.login ||
+      user?.email ||
+      user?.userName ||
+      'Anonymous'
   )
 
   useEffect(() => {

@@ -1,21 +1,21 @@
-import { useSelector } from './store'
+import React, { ReactNode } from 'react'
+import { Provider } from 'react-redux'
 
-import { selectUser } from './slices/userSlice'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ThemeBootstrap } from './components/ThemeBootstrap'
+import { AppStore } from './store'
 
-const App = () => {
-  const user = useSelector(selectUser)
+type AppProps = {
+  children: ReactNode
+  store: AppStore
+}
 
+const App = ({ children, store }: AppProps) => {
   return (
-    <div>
-      {user ? (
-        <div>
-          <p>{user.first_name}</p>
-          <p>{user.second_name}</p>
-        </div>
-      ) : (
-        <p>Пользователь не найден!</p>
-      )}
-    </div>
+    <Provider store={store}>
+      <ThemeBootstrap />
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </Provider>
   )
 }
 

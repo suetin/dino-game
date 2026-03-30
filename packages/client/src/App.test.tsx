@@ -1,25 +1,19 @@
 import React from 'react'
 import { render } from '@testing-library/react'
-import { Provider } from 'react-redux'
 
-import { store } from './store'
+import { createAppStore } from './store'
 import App from './App'
 
 describe('App', () => {
+  const store = createAppStore()
+
   it('renders without crashing', () => {
-    render(
-      <Provider store={store}>
-        <App />
-      </Provider>
-    )
+    render(<App store={store}>content</App>)
   })
 
-  it('shows user not found when user is null', () => {
-    const { getByText } = render(
-      <Provider store={store}>
-        <App />
-      </Provider>
-    )
-    expect(getByText('Пользователь не найден!')).toBeDefined()
+  it('renders children inside the shared app shell', () => {
+    const { getByText } = render(<App store={store}>content</App>)
+
+    expect(getByText('content')).toBeDefined()
   })
 })

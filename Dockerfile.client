@@ -10,6 +10,14 @@ WORKDIR /app
 
 FROM base as builder
 
+ARG SERVER_PORT=3001
+ARG EXTERNAL_SERVER_URL=http://localhost:3001
+ARG INTERNAL_SERVER_URL=http://server:3001
+
+ENV SERVER_PORT=$SERVER_PORT
+ENV EXTERNAL_SERVER_URL=$EXTERNAL_SERVER_URL
+ENV INTERNAL_SERVER_URL=$INTERNAL_SERVER_URL
+
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
@@ -23,18 +31,17 @@ RUN yarn lerna bootstrap
 RUN rm -rf /app/packages/client/dist/ && yarn build --scope=client
 
 FROM node:$NODE_VERSION-buster-slim as production
+ARG CLIENT_PORT=3000
 WORKDIR /app
 
-ARG CLIENT_PORT
+ENV NODE_ENV=production
+ENV LOAD_DOTENV_FILE=0
 
 COPY --from=builder /app/packages/client/dist/ /app/dist/
 COPY --from=builder /app/packages/client/server/ /app/server/
 COPY --from=builder /app/packages/client/package.json /app/package.json
 RUN yarn install --production=true
 
-ENV NODE_ENV=production
-ENV LOAD_DOTENV_FILE=0
 ENV PORT=$CLIENT_PORT
-
 EXPOSE $CLIENT_PORT
 CMD [ "node", "/app/server/index.js" ]

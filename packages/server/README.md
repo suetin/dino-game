@@ -1,30 +1,35 @@
-# 🎸 Forum API (Dino Game Backend)
+# Forum API (Dino Game Backend)
 
-Бэкенд для форума игры, реализованный на **Express**, **TypeScript** и **Sequelize (PostgreSQL)**. Поддерживает иерархические комментарии (дерево ответов) и полный цикл CRUD.
+Бэкенд на **Express**, **TypeScript** и **Sequelize (PostgreSQL)**. Поддерживаются иерархические комментарии и CRUD по форуму.
 
-## 🚀 Запуск проекта
+## Запуск
 
-1. **Поднимите базу данных в Docker:**
-   ```bash
-   docker compose up -d
+Из корня монорепозитория:
 
-2. Установите зависимости:
+1. Поднять PostgreSQL (сервис `db` в compose):
 
-Bash
+```bash
+docker compose up -d db
+```
 
-npm install
+2. Установить зависимости и подготовить `.env`:
 
+```bash
+yarn bootstrap
+node init.js
+```
 
-3. Запустите сервер:
+3. Запустить API в режиме разработки:
 
-Bash
+```bash
+yarn dev --scope=server
+```
 
-npm run dev
+Сервер: http://localhost:3001 (порт можно изменить в `.env`, переменная `SERVER_PORT`).
 
-Сервер будет доступен по адресу: http://localhost:3001
+Переменные БД: если задан непустой `DATABASE_URL`, Sequelize использует **только** его (остальные `POSTGRES_*` для подключения не читаются). Иначе нужен полный набор `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`. В Docker-образе сервера файлы `.env` не подгружаются (`LOAD_DOTENV_FILE=0`). Шаблон — `.env.example` в корне монорепозитория.
 
-🛠 API Endpoints
-Темы (Topics)
+## API: темы (Topics)
 
 Метод,Эндпоинт,Описание
 GET,/api/forum/topics,Получить список всех тем
@@ -34,13 +39,13 @@ PUT,/api/forum/topics/:id,Редактировать заголовок/опис
 DELETE,/api/forum/topics/:id,Удалить тему и её комментарии (Cascade)
 
 
-Комментарии (Comments)
+## API: комментарии (Comments)
 Метод,Эндпоинт,Описание
 POST,/api/forum/comments,Оставить комментарий или ответ
 PUT,/api/forum/comments/:id,Редактировать текст комментария
 
 
-🧪 Примеры запросов (cURL)
+## Примеры (curl)
 Создание темы
 
 curl -X POST http://localhost:3001/api/forum/topics \
@@ -56,7 +61,7 @@ curl -X POST http://localhost:3001/api/forum/comments \
 -d '{"content": "Согласен с предыдущим оратором!", "topic_id": 1, "author_id": 2, "parentId": 5}'
 
 
-🗄 Структура БД (Sequelize)
+## Структура БД (Sequelize)
 Topic: id, title, description, author_id.
 
 Comment: id, content, author_id, topic_id, parentId (для древовидных ответов).

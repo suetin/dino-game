@@ -1,4 +1,13 @@
-.env
 node_modules
-dist
+**/node_modules
+.git
+.env
+**/.env
+*.log
 tmp
+**/dist
+packages/client/dist
+packages/server/dist
+coverage
+.idea
+.vscode

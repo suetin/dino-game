@@ -17,16 +17,16 @@ RUN rm -rf /app/packages/server/dist/ && yarn build --scope=server
 
 
 FROM node:$NODE_VERSION-buster-slim as production
+ARG SERVER_PORT=3001
 WORKDIR /app
 
-ARG SERVER_PORT
+ENV NODE_ENV=production
+ENV LOAD_DOTENV_FILE=0
 
 COPY --from=builder /app/packages/server/dist/ /app/
 COPY --from=builder /app/packages/server/package.json /app/package.json
 RUN yarn install --production=true
 
-ENV NODE_ENV=production
-ENV LOAD_DOTENV_FILE=0
 ENV SERVER_PORT=$SERVER_PORT
 
 EXPOSE $SERVER_PORT

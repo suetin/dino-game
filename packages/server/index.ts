@@ -85,7 +85,7 @@ const start = async () => {
     console.log('  ➜ Database connected')
 
     app.listen(port, () => {
-      console.log(`  ➜  Server is listening on port: ${port}`)
+      console.log(`[server] Слушаю порт ${port}`)
     })
   } catch (error) {
     console.error('Failed to start server:', error)
