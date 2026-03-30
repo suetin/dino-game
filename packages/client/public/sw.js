@@ -1,8 +1,6 @@
-const CACHE_NAME = 'dino-game-cache-v1';
+const CACHE_NAME = 'dino-game-cache-v2';
 
 const URLS = [
-  '/',
-  '/index.html',
   '/images/favicon.ico',
   '/images/pwa-192x192.png',
   '/images/pwa-512x512.png',
@@ -46,7 +44,7 @@ self.addEventListener('fetch', event => {
   const isApiUrl = request.url.includes('/api/');
   const isHtml = request.mode === 'navigate';
 
-  if (isApiUrl || isHtml) {
+  if (isApiUrl) {
     event.respondWith(
       fetch(request)
         .then(response => {
@@ -72,32 +70,38 @@ self.addEventListener('fetch', event => {
              });
           }
 
-          if (isHtml) {
-            return new Response(
-              `
-              <!DOCTYPE html>
-              <html lang="ru">
-                <head>
-                  <meta charset="UTF-8">
-                  <title>Вы оффлайн</title>
-                  <style>
-                    body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #11121D}
-                    h1 { color: #EEF1FA; }
-                  </style>
-                </head>
-                <body>
-                  <h1>Нет подключения к интернету</h1>
-                  <p>Пожалуйста, проверьте ваше соединение и обновите страницу.</p>
-                </body>
-              </html>
-              `,
-              {
-                status: 200,
-                headers: { 'Content-Type': 'text/html' }
-              }
-            );
-          }
         })
+    );
+    return;
+  }
+
+  if (isHtml) {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return new Response(
+          `
+          <!DOCTYPE html>
+          <html lang="ru">
+            <head>
+              <meta charset="UTF-8">
+              <title>Вы оффлайн</title>
+              <style>
+                body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #11121D}
+                h1 { color: #EEF1FA; }
+              </style>
+            </head>
+            <body>
+              <h1>Нет подключения к интернету</h1>
+              <p>Пожалуйста, проверьте ваше соединение и обновите страницу.</p>
+            </body>
+          </html>
+          `,
+          {
+            status: 200,
+            headers: { 'Content-Type': 'text/html' }
+          }
+        );
+      })
     );
     return;
   }

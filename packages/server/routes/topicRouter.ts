@@ -1,75 +1,108 @@
 import { Router, Request, Response } from 'express'
 import { Topic } from '../models/Topic'
 import { Comment } from '../models/Comment'
+import { authMiddleware } from './authMiddleware'
 
 export const topicRouter = Router()
 
-// GET /api/forum/topics - Получить все темы
+// Все маршруты топиков защищены authMiddleware
+topicRouter.use(authMiddleware)
+
 topicRouter.get('/', async (_req: Request, res: Response) => {
   try {
     const topics = await Topic.findAll()
-    return res.json(topics)
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка сервера' })
+    res.json(topics)
+  } catch (err) {
+    console.error('Failed to fetch topics:', err)
+    res.status(500).json({ error: 'Internal Server Error' })
   }
 })
 
-// POST /api/forum/topics - Создать тему
 topicRouter.post('/', async (req: Request, res: Response) => {
   try {
     const { title, description, author_id } = req.body
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      return res.status(400).json({ error: 'Заголовок обязателен' })
+
+    if (!title || !author_id) {
+      res.status(400).json({ error: 'Title and author_id are required' })
+      return
     }
-    const newTopic = await Topic.create({ title, description, author_id })
-    return res.status(201).json(newTopic)
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка при создании темы' })
+
+    // Санитизация (упрощенная)
+    const sanitizedTitle = String(title)
+      .replace(/<[^>]*>?/gm, '')
+      .trim()
+    const sanitizedDescription = description
+      ? String(description)
+          .replace(/<[^>]*>?/gm, '')
+          .trim()
+      : ''
+
+    const topic = await Topic.create({
+      title: sanitizedTitle,
+      description: sanitizedDescription,
+      author_id,
+    })
+    res.status(201).json(topic)
+  } catch (err) {
+    console.error('Failed to create topic:', err)
+    res.status(500).json({ error: 'Internal Server Error' })
   }
 })
 
-// GET /api/forum/topics/:id - Одна тема + комменты
 topicRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const topic = await Topic.findByPk(req.params.id, {
+      include: [{ model: Comment, as: 'comments' }],
+    })
+    if (!topic) {
+      res.status(404).json({ error: 'Topic not found' })
+      return
+    }
+    res.json(topic)
+  } catch (err) {
+    console.error('Failed to fetch topic:', err)
+    res.status(500).json({ error: 'Internal Server Error' })
+  }
+})
+
+topicRouter.get('/:id/comments', async (req: Request, res: Response) => {
+  try {
+    const comments = await Comment.findAll({
+      where: { topic_id: req.params.id, parentId: null },
       include: [
-        {
-          model: Comment,
-          where: { parentId: null },
-          required: false,
-          include: [{ model: Comment, as: 'replies' }],
-        },
+        { model: Comment, as: 'replies', include: [{ all: true, nested: true }] },
+        { all: true },
       ],
     })
-    if (!topic) return res.status(404).json({ error: 'Тема не найдена' })
-    return res.json(topic)
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка сервера' })
+    res.json(comments)
+  } catch (err) {
+    console.error('Failed to fetch comments:', err)
+    res.status(500).json({ error: 'Internal Server Error' })
   }
 })
 
-// PUT /api/forum/topics/:id - Обновить
-topicRouter.put('/:id', async (req: Request, res: Response) => {
+topicRouter.post('/:id/comments', async (req: Request, res: Response) => {
   try {
-    const [updatedCount] = await Topic.update(req.body, {
-      where: { id: req.params.id },
+    const { content, author_id, parentId } = req.body
+
+    if (!content || !author_id) {
+      res.status(400).json({ error: 'Content and author_id are required' })
+      return
+    }
+
+    const sanitizedContent = String(content)
+      .replace(/<[^>]*>?/gm, '')
+      .trim()
+
+    const comment = await Comment.create({
+      content: sanitizedContent,
+      author_id,
+      topic_id: Number(req.params.id),
+      parentId: parentId || null,
     })
-    if (updatedCount === 0)
-      return res.status(404).json({ error: 'Тема не найдена' })
-    return res.json({ message: 'Тема обновлена' })
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка при обновлении' })
-  }
-})
-
-// DELETE /api/forum/topics/:id - Удалить
-topicRouter.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    const deletedCount = await Topic.destroy({ where: { id: req.params.id } })
-    if (deletedCount === 0)
-      return res.status(404).json({ error: 'Тема не найдена' })
-    return res.json({ message: 'Тема удалена' })
-  } catch (e) {
-    return res.status(500).json({ error: 'Ошибка при удалении' })
+    res.status(201).json(comment)
+  } catch (err) {
+    console.error('Failed to create comment:', err)
+    res.status(500).json({ error: 'Internal Server Error' })
   }
 })

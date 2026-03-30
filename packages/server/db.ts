@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize-typescript'
 import { Topic } from './models/Topic'
 import { Comment } from './models/Comment'
+import { Reaction } from './models/Reaction'
 
 function parseDatabaseUrl(raw: string) {
   const parsed = new URL(raw)
@@ -53,7 +54,7 @@ function configFromEnv() {
 
 export const sequelize = new Sequelize({
   ...configFromEnv(),
-  models: [Topic, Comment],
+  models: [Topic, Comment, Reaction],
   logging: false,
 })
 
