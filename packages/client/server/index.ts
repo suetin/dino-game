@@ -1,5 +1,8 @@
 import dotenv from 'dotenv'
-dotenv.config()
+
+if (process.env.LOAD_DOTENV_FILE !== '0') {
+  dotenv.config()
+}
 
 import express from 'express'
 import path from 'path'
@@ -102,7 +105,6 @@ async function createServer() {
       if (vite) {
         vite.ssrFixStacktrace(e as Error)
       }
-
       next(e)
     }
   })
