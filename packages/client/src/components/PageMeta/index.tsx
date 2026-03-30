@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { ComponentType, PropsWithChildren } from 'react'
 import { Helmet } from 'react-helmet'
 
 interface PageMetaProps {
@@ -6,12 +6,16 @@ interface PageMetaProps {
   description?: string
 }
 
+// react-helmet has outdated JSX typings for our current React/tooling setup,
+// so we adapt it once here instead of spreading casts across the app.
+const HelmetComponent = Helmet as unknown as ComponentType<PropsWithChildren>
+
 export const PageMeta = ({ title, description }: PageMetaProps) => {
   return (
-    <Helmet>
+    <HelmetComponent>
       <meta charSet="utf-8" />
-      {title && <title>{title}</title>}
-      {description && <meta name="description" content={description} />}
-    </Helmet>
+      {title ? <title>{title}</title> : null}
+      {description ? <meta name="description" content={description} /> : null}
+    </HelmetComponent>
   )
 }

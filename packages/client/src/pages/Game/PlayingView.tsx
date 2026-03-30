@@ -77,7 +77,11 @@ export const PlayingView = () => {
       dispatch(finishGame(score))
 
       const playerName =
-        user?.displayName || user?.name || user?.login || user?.email || 'Anonymous'
+        user?.displayName ||
+        [user?.first_name, user?.second_name].filter(Boolean).join(' ').trim() ||
+        user?.login ||
+        user?.email ||
+        'Anonymous'
 
       try {
         await dispatch(
