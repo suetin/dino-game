@@ -93,9 +93,7 @@ const start = async () => {
       await connectDB()
     }
 
-    app.listen(port, () => {
-      console.log(`[server] Слушаю порт ${port}`)
-    })
+    app.listen(port)
   } catch (error) {
     console.error('Failed to start server:', error)
     process.exit(1)

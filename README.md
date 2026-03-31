@@ -207,15 +207,38 @@ yarn build
 
 ### Окружение в Docker
 
-Перед первым запуском выполните `node init.js`.
+**Одна команда запуска всего стека** (нужен запущенный Docker Desktop / daemon). Перед первым запуском по желанию выполните `node init.js` — создаст `.env` из [`.env.example`](.env.example), если файла ещё нет, и каталог `tmp/pgdata` для данных PostgreSQL.
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
-Запускаются три сервиса: nginx (клиентская статика), node (сервер), postgres (БД).
+Файл `.env` для compose **не обязателен**: для `DB_*`, `CLIENT_PORT`, `SERVER_PORT`, `POSTGRES_PORT` заданы безопасные значения по умолчанию (локальная разработка). Секреты в репозиторий не кладём: в git есть только `.env.example`, а `.env` перечислен в `.gitignore`.
 
-Один сервис: `docker compose up {service_name}`, например `docker compose up server`.
+**Сервисы в `docker-compose.yml`:** `db` (PostgreSQL 14), `server` (Node API), `client` (SSR Node + статика). Связи: `server` ждёт готовности `db` (`depends_on` + `service_healthy`), `client` стартует после `server`. Внутри сети compose PostgreSQL доступен как хост **`db`**, порт **5432**; наружу БД пробрасывается на `POSTGRES_PORT` хоста (по умолчанию 5432).
+
+**Образы не должны содержать ваш локальный `.env`:** в корне репозитория добавлен [`.dockerignore`](.dockerignore). На этапе сборки `client` в образ передаются `EXTERNAL_SERVER_URL` и `INTERNAL_SERVER_URL`: в браузер попадает только **внешний** URL (`http://localhost:<SERVER_PORT>`), для SSR в бандл зашивается **внутренний** (`http://server:<SERVER_PORT>`). Если меняете `SERVER_PORT`, задайте в `.env` явно `EXTERNAL_SERVER_URL` и при необходимости `INTERNAL_SERVER_URL` до сборки, либо пересоберите образ: `docker compose build --no-cache client`.
+
+**Полная проверка (Definition of Done для Docker):**
+
+1. `docker compose up --build` завершается без падения контейнеров (дождаться строки о прослушивании порта у `server` и `client`).
+2. `docker compose ps` — все три сервиса в состоянии `running` (у `db` допустимо `healthy`).
+3. Логи API: `docker compose logs server` — есть строка с режимом `[db] Режим подключения: DATABASE_URL ... (хост db, ...)` и `[db] Подключение к PostgreSQL установлено...`.
+4. Проверка HTTP: `curl -s -o NUL -w "%{http_code}" http://localhost:3001/` (или ваш `SERVER_PORT`) ожидается `200`.
+5. Клиент в браузере: `http://localhost:3000` (или ваш `CLIENT_PORT`) открывается без ошибки контейнера `client` в логах.
+
+Быстрая проверка после старта:
+
+```bash
+docker compose ps
+docker compose logs server --tail 50
+```
+
+Если `server` стартует раньше готовности Postgres, compose не отпустит его до `healthy` у `db`; при ручном запуске только `server` без `db` приложение завершится с ошибкой подключения — это ожидаемо.
+
+**Sequelize:** при старте вызывается `sequelize.sync()` (см. `packages/server/db.ts`) — таблицы создаются/приводятся к моделям без отдельного шага миграций. Для продакшена позже имеет смысл перейти на миграции.
+
+Отдельный сервис: `docker compose up db` или `docker compose up server`.
 
 ### Автодеплой статики на Vercel
 

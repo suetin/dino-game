@@ -26,7 +26,7 @@ function configFromEnv() {
   if (databaseUrl) {
     const parsed = parseDatabaseUrl(databaseUrl)
     console.log(
-      `[db] Режим подключения: DATABASE_URL (хост ${parsed.host}, порт ${parsed.port}, БД ${parsed.database})`
+      `[db] Режим подключения: DATABASE_URL (хост ${parsed.host}, порт ${parsed.port}, БД ${parsed.database}). Переменные POSTGRES_* для Sequelize не используются.`
     )
 
     return {
@@ -50,7 +50,9 @@ function configFromEnv() {
     throw new Error('POSTGRES_PORT должен быть числом')
   }
 
-  console.log(`[db] Режим подключения: POSTGRES_* (хост ${host}, порт ${port}, БД ${POSTGRES_DB})`)
+  console.log(
+    `[db] Режим подключения: POSTGRES_* (хост ${host}, порт ${port}, БД ${POSTGRES_DB}). DATABASE_URL не задан — не используется.`
+  )
 
   return {
     dialect: 'postgres' as const,

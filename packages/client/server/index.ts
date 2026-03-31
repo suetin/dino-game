@@ -1,18 +1,74 @@
 import dotenv from 'dotenv'
-dotenv.config()
 
-import { HelmetData } from 'react-helmet'
-import express, { Request as ExpressRequest } from 'express'
+if (process.env.LOAD_DOTENV_FILE !== '0') {
+  dotenv.config()
+}
+
+import express from 'express'
 import path from 'path'
 
 import fs from 'fs/promises'
-import { createServer as createViteServer, ViteDevServer } from 'vite'
+import type { HelmetData } from 'react-helmet'
 import serialize from 'serialize-javascript'
+import { createServer as createViteServer } from 'vite'
+import type { ViteDevServer } from 'vite'
 import cookieParser from 'cookie-parser'
 
 const port = process.env.PORT || 3000
-const clientPath = path.join(__dirname, '..')
+const clientPath = process.cwd()
 const isDev = process.env.NODE_ENV === 'development'
+
+type RenderResult =
+  | {
+      response: Response
+    }
+  | {
+      helmet: HelmetData
+      html: string
+      initialState: unknown
+    }
+
+type RenderFn = (req: express.Request) => Promise<RenderResult>
+
+async function loadRenderer(vite: ViteDevServer | undefined, url: string) {
+  let template: string
+  let render: RenderFn
+
+  if (vite) {
+    template = await fs.readFile(path.resolve(clientPath, 'index.html'), 'utf-8')
+    template = await vite.transformIndexHtml(url, template)
+    render = (await vite.ssrLoadModule(path.join(clientPath, 'src/entry-server.tsx'))).render
+  } else {
+    template = await fs.readFile(path.join(clientPath, 'dist/client/index.html'), 'utf-8')
+    const pathToServer = path.join(clientPath, 'dist/server/entry-server.js')
+    render = (await import(pathToServer)).render
+  }
+
+  return { render, template }
+}
+
+function sendRouterResponse(res: express.Response, response: Response) {
+  response.headers.forEach((value, key) => {
+    res.append(key, value)
+  })
+
+  return response.text().then(body => res.status(response.status).send(body))
+}
+
+function injectHtml(template: string, rendered: Exclude<RenderResult, { response: Response }>) {
+  return template
+    .replace(
+      '<!--ssr-helmet-->',
+      `${rendered.helmet.meta.toString()} ${rendered.helmet.title.toString()} ${rendered.helmet.link.toString()}`
+    )
+    .replace('<!--ssr-outlet-->', rendered.html)
+    .replace(
+      '<!--ssr-initial-state-->',
+      `<script>window.APP_INITIAL_STATE = ${serialize(rendered.initialState, {
+        isJSON: true,
+      })}</script>`
+    )
+}
 
 async function createServer() {
   const app = express()
@@ -35,56 +91,20 @@ async function createServer() {
     const url = req.originalUrl
 
     try {
-      // Получаем файл client/index.html который мы правили ранее
-      // Создаём переменные
-      let render: (req: ExpressRequest) => Promise<{
-        html: string
-        initialState: unknown
-        helmet: HelmetData
-        styleTags: string
-      }>
-      let template: string
-      if (vite) {
-        template = await fs.readFile(path.resolve(clientPath, 'index.html'), 'utf-8')
+      const { render, template } = await loadRenderer(vite, url)
+      const rendered = await render(req)
 
-        // Применяем встроенные HTML-преобразования vite и плагинов
-        template = await vite.transformIndexHtml(url, template)
-
-        // Загружаем модуль клиента, который писали выше,
-        // он будет рендерить HTML-код
-        render = (await vite.ssrLoadModule(path.join(clientPath, 'src/entry-server.tsx'))).render
-      } else {
-        template = await fs.readFile(path.join(clientPath, 'dist/client/index.html'), 'utf-8')
-
-        // Получаем путь до сбилдженого модуля клиента, чтобы не тащить средства сборки клиента на сервер
-        const pathToServer = path.join(clientPath, 'dist/server/entry-server.js')
-
-        // Импортируем этот модуль и вызываем с инишл стейтом
-        render = (await import(pathToServer)).render
+      if ('response' in rendered) {
+        await sendRouterResponse(res, rendered.response)
+        return
       }
 
-      // Получаем HTML-строку из JSX
-      const { html: appHtml, initialState, helmet } = await render(req)
-
-      // Заменяем комментарий на сгенерированную HTML-строку
-      const html = template
-        .replace('<!--ssr-styles-->', '')
-        .replace(
-          `<!--ssr-helmet-->`,
-          `${helmet.meta.toString()} ${helmet.title.toString()} ${helmet.link.toString()}`
-        )
-        .replace(`<!--ssr-outlet-->`, appHtml)
-        .replace(
-          `<!--ssr-initial-state-->`,
-          `<script>window.APP_INITIAL_STATE = ${serialize(initialState, {
-            isJSON: true,
-          })}</script>`
-        )
-
-      // Завершаем запрос и отдаём HTML-страницу
-      res.status(200).set({ 'Content-Type': 'text/html' }).end(html)
+      const html = injectHtml(template, rendered)
+      res.status(200).set({ 'Content-Type': 'text/html' }).send(html)
     } catch (e) {
-      vite.ssrFixStacktrace(e as Error)
+      if (vite) {
+        vite.ssrFixStacktrace(e as Error)
+      }
       next(e)
     }
   })

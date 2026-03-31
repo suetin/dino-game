@@ -1,142 +1,104 @@
-import React, { useMemo } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Moon, Sun, Menu, LogOut } from 'lucide-react'
+import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from '@/store'
-import { selectIsDarkMode, toggleTheme } from '@/slices/themeSlice'
-import { selectUser, logoutThunk } from '@/slices/userSlice'
-import logoHeaderImg from '@/assets/images/logo_header.png'
-import { MENU_ITEMS, HOME_ITEM } from '@/config/menu'
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu'
-
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { Moon, Sun } from 'lucide-react'
+import { ROUTES } from '@/config/routes'
+import { selectUser, logoutThunk } from '@/slices/userSlice'
+import { selectTheme, setThemeThunk } from '@/slices/themeSlice'
+
+const navLinkClass = (isActive: boolean) =>
+  isActive
+    ? 'text-primary font-medium'
+    : 'text-foreground/80 transition-colors hover:text-foreground'
 
 export const Header = () => {
   const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const isDarkMode = useSelector(selectIsDarkMode)
-  const user = useSelector(selectUser)
   const location = useLocation()
-
-  const handleSetTheme = (targetIsDark: boolean) => {
-    if (isDarkMode !== targetIsDark) {
-      dispatch(toggleTheme())
-    }
-  }
+  const user = useSelector(selectUser)
+  const theme = useSelector(selectTheme)
 
   const handleLogout = async () => {
     await dispatch(logoutThunk())
-    navigate('/')
   }
 
-  const pageNameMap = useMemo(() => {
-    const map: Record<string, string> = {
-      [HOME_ITEM.path]: HOME_ITEM.title,
-    }
-    MENU_ITEMS.forEach(item => {
-      map[item.path] = item.title
-    })
-    return map
-  }, [])
-
-  const currentPageName = pageNameMap[location.pathname] || 'Меню'
-
   return (
-    <header className="flex justify-between items-center px-4 md:px-8 py-4 bg-primary border-b border-border shadow-sm">
-      <div className="flex items-center gap-4 md:gap-8">
-        <Link to={HOME_ITEM.path} className="hover:opacity-80 transition-opacity">
-          <img src={logoHeaderImg} alt="Logo" className="h-8 md:h-10 w-auto object-contain" />
-        </Link>
+    <header className="border-b bg-background">
+      <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-10">
+          <Link to={ROUTES.HOME} className="shrink-0 text-xl font-bold text-foreground">
+            Dino Game
+          </Link>
 
-        <div className="hidden md:block">
-          <NavigationMenu>
-            <NavigationMenuList>
-              {MENU_ITEMS.map(item => (
-                <NavigationMenuItem key={item.path}>
-                  <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                    <Link to={item.path}>{item.title}</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-              ))}
+          <nav className="flex items-center gap-6">
+            <Link to={ROUTES.GAME} className={navLinkClass(location.pathname === ROUTES.GAME)}>
+              Игра
+            </Link>
 
-              {user && (
-                <NavigationMenuItem>
-                  <Button
-                    variant="ghost"
-                    className={navigationMenuTriggerStyle()}
-                    onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Выйти
-                  </Button>
-                </NavigationMenuItem>
-              )}
-            </NavigationMenuList>
-          </NavigationMenu>
+            <Link
+              to={ROUTES.LEADERBOARD}
+              className={navLinkClass(location.pathname === ROUTES.LEADERBOARD)}>
+              Лидерборд
+            </Link>
+
+            {user ? (
+              <Link
+                to={ROUTES.PROFILE}
+                className={navLinkClass(location.pathname === ROUTES.PROFILE)}>
+                Профиль
+              </Link>
+            ) : null}
+          </nav>
         </div>
 
-        <div className="md:hidden">
+        <div className="flex shrink-0 items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Menu className="h-4 w-4" />
-                <span>{currentPageName}</span>
+              <Button variant="outline" size="icon" type="button">
+                <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Переключить тему</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem asChild>
-                <Link to={HOME_ITEM.path}>{HOME_ITEM.title}</Link>
-              </DropdownMenuItem>
-              {MENU_ITEMS.map(item => (
-                <DropdownMenuItem key={item.path} asChild>
-                  <Link to={item.path}>{item.title}</Link>
-                </DropdownMenuItem>
-              ))}
 
-              {user && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="text-destructive focus:text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Выйти
-                  </DropdownMenuItem>
-                </>
-              )}
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => dispatch(setThemeThunk('light'))}>
+                Светлая тема {theme === 'light' && '✓'}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => dispatch(setThemeThunk('dark'))}>
+                Тёмная тема {theme === 'dark' && '✓'}
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={() => dispatch(setThemeThunk('ocean'))}>
+                Ocean тема {theme === 'ocean' && '✓'}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {user ? (
+            <Button type="button" variant="outline" onClick={handleLogout}>
+              Выйти
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="outline" type="button">
+                <Link to={ROUTES.LOGIN}>Войти</Link>
+              </Button>
+
+              <Button asChild type="button">
+                <Link to={ROUTES.REGISTER}>Регистрация</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon">
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Переключить тему</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => handleSetTheme(false)}>
-            Светлая тема {!isDarkMode && '✓'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleSetTheme(true)}>
-            Темная тема {isDarkMode && '✓'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </header>
   )
 }
