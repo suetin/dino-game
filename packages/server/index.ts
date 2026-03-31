@@ -91,9 +91,6 @@ const start = async () => {
       app.use('/api/forum/comments', requireAuth, commentRouter)
 
       await connectDB()
-      console.log('[server] База подключена')
-    } else {
-      console.log('[server] SKIP_DB=true — база не подключается')
     }
 
     app.listen(port, () => {
