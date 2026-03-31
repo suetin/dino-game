@@ -33,8 +33,11 @@ function configFromEnv() {
     )
   }
 
-  const host = process.env.POSTGRES_HOST || 'localhost'
+  const host = process.env.POSTGRES_HOST || 'db'
   const port = Number(POSTGRES_PORT)
+  if (Number.isNaN(port)) {
+    throw new Error('POSTGRES_PORT должен быть числом')
+  }
 
   return {
     dialect: 'postgres' as const,
