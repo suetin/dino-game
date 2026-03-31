@@ -23,9 +23,6 @@ function configFromEnv() {
 
   if (databaseUrl) {
     const parsed = parseDatabaseUrl(databaseUrl)
-    console.log(
-      `[db] Режим подключения: DATABASE_URL (хост ${parsed.host}, порт ${parsed.port}, БД ${parsed.database}). Переменные POSTGRES_* для Sequelize не используются.`
-    )
     return { dialect: 'postgres' as const, ...parsed }
   }
 
@@ -38,9 +35,6 @@ function configFromEnv() {
 
   const host = process.env.POSTGRES_HOST || 'localhost'
   const port = Number(POSTGRES_PORT)
-  console.log(
-    `[db] Режим подключения: POSTGRES_* (хост ${host}, порт ${port}, БД ${POSTGRES_DB}). DATABASE_URL не задан — не используется.`
-  )
 
   return {
     dialect: 'postgres' as const,
@@ -61,5 +55,4 @@ export const sequelize = new Sequelize({
 export const connectDB = async (): Promise<void> => {
   await sequelize.authenticate()
   await sequelize.sync()
-  console.log('[db] Подключение к PostgreSQL установлено, схема синхронизирована (sequelize.sync).')
 }
