@@ -6,9 +6,11 @@ import { Reaction } from './models/Reaction'
 function parseDatabaseUrl(raw: string) {
   const parsed = new URL(raw)
   const database = parsed.pathname.replace(/^\//, '')
+
   if (!database) {
     throw new Error('DATABASE_URL must include a database name')
   }
+
   return {
     host: parsed.hostname,
     port: Number(parsed.port || 5432),
@@ -26,18 +28,28 @@ function configFromEnv() {
     console.log(
       `[db] Режим подключения: DATABASE_URL (хост ${parsed.host}, порт ${parsed.port}, БД ${parsed.database}). Переменные POSTGRES_* для Sequelize не используются.`
     )
-    return { dialect: 'postgres' as const, ...parsed }
+
+    return {
+      dialect: 'postgres' as const,
+      ...parsed,
+    }
   }
 
   const { POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT } = process.env
+
   if (!POSTGRES_USER || !POSTGRES_PASSWORD || !POSTGRES_DB || !POSTGRES_PORT) {
     throw new Error(
       'Задайте либо DATABASE_URL, либо полный набор POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT (и при необходимости POSTGRES_HOST).'
     )
   }
 
-  const host = process.env.POSTGRES_HOST || 'localhost'
+  const host = process.env.POSTGRES_HOST || 'db'
   const port = Number(POSTGRES_PORT)
+
+  if (Number.isNaN(port)) {
+    throw new Error('POSTGRES_PORT должен быть числом')
+  }
+
   console.log(
     `[db] Режим подключения: POSTGRES_* (хост ${host}, порт ${port}, БД ${POSTGRES_DB}). DATABASE_URL не задан — не используется.`
   )
@@ -61,5 +73,5 @@ export const sequelize = new Sequelize({
 export const connectDB = async (): Promise<void> => {
   await sequelize.authenticate()
   await sequelize.sync()
-  console.log('[db] Подключение к PostgreSQL установлено, схема синхронизирована (sequelize.sync).')
+  console.log('[db] Подключение к PostgreSQL установлено, схема синхронизирована')
 }

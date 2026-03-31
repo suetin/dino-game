@@ -1,12 +1,8 @@
 import { Router, Request, Response } from 'express'
 import { Comment } from '../models/Comment'
 import { Reaction } from '../models/Reaction'
-import { authMiddleware } from './authMiddleware'
 
 export const commentRouter = Router()
-
-// Все маршруты комментариев защищены authMiddleware
-commentRouter.use(authMiddleware)
 
 commentRouter.get('/:id', async (req: Request, res: Response) => {
   try {

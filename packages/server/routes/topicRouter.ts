@@ -1,12 +1,8 @@
 import { Router, Request, Response } from 'express'
 import { Topic } from '../models/Topic'
 import { Comment } from '../models/Comment'
-import { authMiddleware } from './authMiddleware'
 
 export const topicRouter = Router()
-
-// Все маршруты топиков защищены authMiddleware
-topicRouter.use(authMiddleware)
 
 topicRouter.get('/', async (_req: Request, res: Response) => {
   try {
