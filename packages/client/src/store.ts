@@ -13,6 +13,7 @@ import ssrReducer from './slices/ssrSlice'
 import userReducer from './slices/userSlice'
 import themeReducer from './slices/themeSlice'
 import leaderboardReducer from './slices/leaderboardSlice'
+import forumReducer from './slices/forumSlice'
 
 declare global {
   interface Window {
@@ -27,6 +28,7 @@ export const reducer = combineReducers({
   user: userReducer,
   theme: themeReducer,
   leaderboard: leaderboardReducer,
+  forum: forumReducer,
 })
 
 export type RootState = ReturnType<typeof reducer>
