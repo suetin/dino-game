@@ -3,52 +3,73 @@ import { Topic } from './models/Topic'
 import { Comment } from './models/Comment'
 import { Reaction } from './models/Reaction'
 
-const {
-  DATABASE_URL,
-  POSTGRES_USER,
-  POSTGRES_PASSWORD,
-  POSTGRES_DB,
-  POSTGRES_PORT,
-  POSTGRES_HOST,
-} = process.env
+function parseDatabaseUrl(raw: string) {
+  const parsed = new URL(raw)
+  const database = parsed.pathname.replace(/^\//, '')
 
-const databaseUrl = typeof DATABASE_URL === 'string' ? DATABASE_URL.trim() : ''
-const hasDatabaseUrl = databaseUrl.length > 0
+  if (!database) {
+    throw new Error('DATABASE_URL must include a database name')
+  }
 
-if (!hasDatabaseUrl && (!POSTGRES_USER || !POSTGRES_PASSWORD || !POSTGRES_DB || !POSTGRES_PORT)) {
-  throw new Error('Database environment variables are not fully defined')
+  return {
+    host: parsed.hostname,
+    port: Number(parsed.port || 5432),
+    username: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database,
+  }
 }
 
-const sequelize = hasDatabaseUrl
-  ? new Sequelize(databaseUrl, {
-      dialect: 'postgres',
-      models: [Topic, Comment, Reaction],
-      logging: false,
-    })
-  : new Sequelize({
-      dialect: 'postgres',
-      host: POSTGRES_HOST || 'localhost',
-      port: Number(POSTGRES_PORT),
-      username: POSTGRES_USER,
-      password: POSTGRES_PASSWORD,
-      database: POSTGRES_DB,
-      models: [Topic, Comment, Reaction],
-      logging: false,
-    })
+function configFromEnv() {
+  const databaseUrl = process.env.DATABASE_URL?.trim()
 
-export { sequelize }
-
-export const connectDB = async (): Promise<void> => {
-  if (hasDatabaseUrl) {
-    console.log('[db] Режим подключения: DATABASE_URL')
-  } else {
+  if (databaseUrl) {
+    const parsed = parseDatabaseUrl(databaseUrl)
     console.log(
-      `[db] Режим подключения: POSTGRES_* host=${
-        POSTGRES_HOST || 'localhost'
-      } port=${POSTGRES_PORT} db=${POSTGRES_DB}`
+      `[db] Режим подключения: DATABASE_URL (хост ${parsed.host}, порт ${parsed.port}, БД ${parsed.database})`
+    )
+
+    return {
+      dialect: 'postgres' as const,
+      ...parsed,
+    }
+  }
+
+  const { POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT } = process.env
+
+  if (!POSTGRES_USER || !POSTGRES_PASSWORD || !POSTGRES_DB || !POSTGRES_PORT) {
+    throw new Error(
+      'Задайте либо DATABASE_URL, либо полный набор POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT (и при необходимости POSTGRES_HOST).'
     )
   }
 
+  const host = process.env.POSTGRES_HOST || 'db'
+  const port = Number(POSTGRES_PORT)
+
+  if (Number.isNaN(port)) {
+    throw new Error('POSTGRES_PORT должен быть числом')
+  }
+
+  console.log(`[db] Режим подключения: POSTGRES_* (хост ${host}, порт ${port}, БД ${POSTGRES_DB})`)
+
+  return {
+    dialect: 'postgres' as const,
+    host,
+    port,
+    username: POSTGRES_USER,
+    password: POSTGRES_PASSWORD,
+    database: POSTGRES_DB,
+  }
+}
+
+export const sequelize = new Sequelize({
+  ...configFromEnv(),
+  models: [Topic, Comment, Reaction],
+  logging: false,
+})
+
+export const connectDB = async (): Promise<void> => {
   await sequelize.authenticate()
   await sequelize.sync()
+  console.log('[db] Подключение к PostgreSQL установлено, схема синхронизирована')
 }
