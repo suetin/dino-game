@@ -1,9 +1,12 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { Share2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
+import { Toast } from '@/components/ui/toast'
 import gameNameImg from '@/assets/images/game_name.png'
+import { share } from '@/lib/share'
 import { PageInitArgs } from '@/routes'
 import { selectUser, fetchUserThunk } from '@/slices/userSlice'
 import { useSelector } from '@/store'
@@ -11,9 +14,30 @@ import { usePage } from '@/hooks/usePage'
 
 export const MainPage = () => {
   const user = useSelector(selectUser)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isShareToastOpen, setIsShareToastOpen] = useState(false)
+  const [shareToastKey, setShareToastKey] = useState(0)
 
   // Используем хук для инициализации на клиенте (если перешли по ссылке)
   usePage({ initPage: initMainPage })
+
+  const handleShare = async () => {
+    setShareToastKey(currentValue => currentValue + 1)
+    setIsShareToastOpen(true)
+
+    const shareUrl = window.location.origin
+    setIsLoading(true)
+
+    try {
+      await share({
+        title: 'Увлекательный Dino Runner от CodeStorm',
+        text: 'Беги, прыгай и попробуй побить рекорд в Dino Runner',
+        url: shareUrl,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <WrapperContent className="max-w-[600px] items-center justify-center text-center">
@@ -43,17 +67,32 @@ export const MainPage = () => {
         командной frontend/backend-разработки.
       </p>
 
-      {!user && (
-        <Button size="lg" variant="outline" asChild>
-          <Link to="/login">Войти</Link>
-        </Button>
-      )}
+      <Toast
+        key={shareToastKey}
+        open={isShareToastOpen}
+        onOpenChange={setIsShareToastOpen}
+        message="Спасибо что поделились игрой!"
+        variant="success"
+      />
 
-      {user && (
-        <Button size="lg" asChild>
-          <Link to="/game">Играть</Link>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {!user && (
+          <Button size="lg" variant="outline" asChild>
+            <Link to="/login">Войти</Link>
+          </Button>
+        )}
+
+        {user && (
+          <Button size="lg" asChild>
+            <Link to="/game">Играть</Link>
+          </Button>
+        )}
+
+        <Button size="lg" variant="secondary" onClick={handleShare} disabled={isLoading}>
+          <Share2 className="h-4 w-4" />
+          {isLoading ? 'Загрузка...' : 'Поделиться игрой'}
         </Button>
-      )}
+      </div>
     </WrapperContent>
   )
 }
