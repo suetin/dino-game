@@ -10,9 +10,9 @@ import {
   selectTopics,
   selectCurrentComments,
   selectForumLoading,
-  Topic,
   clearForumError,
 } from '@/slices/forumSlice'
+import { Topic } from '@/slices/forum.types'
 import { selectUser } from '@/slices/userSlice'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

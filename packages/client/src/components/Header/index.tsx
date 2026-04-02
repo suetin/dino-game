@@ -54,6 +54,12 @@ export const Header = () => {
                 Профиль
               </Link>
             ) : null}
+
+            {user ? (
+              <Link to={ROUTES.FORUM} className={navLinkClass(location.pathname === ROUTES.FORUM)}>
+                Форум
+              </Link>
+            ) : null}
           </nav>
         </div>
 
