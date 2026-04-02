@@ -90,9 +90,10 @@ export const Toast = ({
       <Alert
         className={cn(
           toastAlertVariants({ variant }),
+          'duration-300',
           isLeaving
-            ? 'animate-out slide-out-to-top-2 fade-out duration-300'
-            : 'animate-in slide-in-from-top-2 fade-in duration-300'
+            ? 'animate-out slide-out-to-top-2 fade-out'
+            : 'animate-in slide-in-from-top-2 fade-in'
         )}>
         <Icon className="h-5 w-5 shrink-0" />
         <AlertDescription className="min-w-0 flex-1 text-inherit font-medium leading-6 [&_p]:leading-relaxed">
