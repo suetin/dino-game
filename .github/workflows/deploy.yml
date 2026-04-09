@@ -36,27 +36,17 @@ jobs:
           printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Debug SSH key
-        run: |
-          ssh-keygen -y -f ~/.ssh/id_ed25519
-          ssh-keygen -lf ~/.ssh/id_ed25519
-
-      - name: Debug SSH connection
+      - name: Run deploy script on server
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          echo "DEPLOY_USER=$DEPLOY_USER"
-          echo "DEPLOY_HOST is set: $([ -n "$DEPLOY_HOST" ] && echo yes || echo no)"
-          echo "DEPLOY_PORT=${DEPLOY_PORT:-22}"
-
           port="${DEPLOY_PORT:-22}"
-
-          ssh -vvv \
+          ssh \
             -i ~/.ssh/id_ed25519 \
             -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=no \
             -p "$port" \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "whoami"
+            "PROJECT_DIR='${DEPLOY_PATH}' DEPLOY_BRANCH='${DEPLOY_REF}' bash -s" < deploy/scripts/deploy-vm.sh
