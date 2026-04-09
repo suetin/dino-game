@@ -3,13 +3,14 @@ name: Deploy
 on:
   push:
     branches:
+      - dev
       - main
   workflow_dispatch:
     inputs:
       ref:
         description: Branch to deploy
         required: false
-        default: main
+        default: dev
 
 concurrency:
   group: production-deploy
