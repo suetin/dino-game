@@ -1,0 +1,66 @@
+services:
+  db:
+    container_name: dino-db
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - ./tmp/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  server:
+    container_name: dino-server
+    image: dino-server
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+      args:
+        SERVER_PORT: ${SERVER_PORT:-3001}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${SERVER_PORT:-3001}:${SERVER_PORT:-3001}'
+    environment:
+      NODE_ENV: production
+      SERVER_PORT: ${SERVER_PORT:-3001}
+      LOAD_DOTENV_FILE: '0'
+      POSTGRES_HOST: db
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  client:
+    container_name: dino-client
+    image: dino-client
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+      args:
+        CLIENT_PORT: ${CLIENT_PORT:-3000}
+        SERVER_PORT: ${SERVER_PORT:-3001}
+        EXTERNAL_SERVER_URL: ${EXTERNAL_SERVER_URL}
+        INTERNAL_SERVER_URL: ${INTERNAL_SERVER_URL}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${CLIENT_PORT:-3000}:${CLIENT_PORT:-3000}'
+    environment:
+      NODE_ENV: production
+      LOAD_DOTENV_FILE: '0'
+      PORT: ${CLIENT_PORT:-3000}
+      SERVER_PORT: ${SERVER_PORT:-3001}
+      INTERNAL_SERVER_URL: ${INTERNAL_SERVER_URL}
+      EXTERNAL_SERVER_URL: ${EXTERNAL_SERVER_URL}
+    depends_on:
+      - server

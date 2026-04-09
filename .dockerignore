@@ -3,6 +3,8 @@ node_modules
 .git
 .env
 **/.env
+.env.production
+**/.env.production
 *.log
 tmp
 **/dist
