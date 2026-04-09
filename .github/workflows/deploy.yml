@@ -23,6 +23,7 @@ jobs:
       contents: read
     env:
       DEPLOY_REF: ${{ github.event.inputs.ref || github.ref_name }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,13 +41,22 @@ jobs:
           ssh-keygen -y -f ~/.ssh/id_ed25519
           ssh-keygen -lf ~/.ssh/id_ed25519
 
-      - name: Run deploy script on server
+      - name: Debug SSH connection
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
+          echo "DEPLOY_USER=$DEPLOY_USER"
+          echo "DEPLOY_HOST is set: $([ -n "$DEPLOY_HOST" ] && echo yes || echo no)"
+          echo "DEPLOY_PORT=${DEPLOY_PORT:-22}"
+
           port="${DEPLOY_PORT:-22}"
-          ssh -i ~/.ssh/id_ed25519 -p "$port" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "PROJECT_DIR='${DEPLOY_PATH}' DEPLOY_BRANCH='${DEPLOY_REF}' bash -s" < deploy/scripts/deploy-vm.sh
+
+          ssh -vvv \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=no \
+            -p "$port" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "whoami"
