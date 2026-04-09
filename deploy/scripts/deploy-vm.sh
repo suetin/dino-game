@@ -1,42 +1,57 @@
-#!/usr/bin/env bash
+name: Deploy
 
-set -euo pipefail
+on:
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch to deploy
+        required: false
+        default: dev
 
-PROJECT_DIR="${PROJECT_DIR:?PROJECT_DIR is required}"
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
-ENV_FILE="${ENV_FILE:-.env.production}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo 'docker is not installed'
-  exit 1
-fi
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEPLOY_REF: ${{ github.event.inputs.ref || github.ref_name }}
 
-cd "$PROJECT_DIR"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-if [[ ! -d .git ]]; then
-  echo "Git repository not found in $PROJECT_DIR"
-  exit 1
-fi
+      - name: Configure SSH access
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "Environment file $ENV_FILE not found"
-  exit 1
-fi
+      - name: Normalize deploy script line endings
+        run: |
+          sed -i 's/\r$//' deploy/scripts/deploy-vm.sh
+          chmod +x deploy/scripts/deploy-vm.sh
 
-current_branch="$(git rev-parse --abbrev-ref HEAD)"
-
-if [[ "$current_branch" != "$DEPLOY_BRANCH" ]]; then
-  echo "Current branch is $current_branch, expected $DEPLOY_BRANCH"
-  echo 'Switch the server repository to the target branch manually before enabling auto-deploy.'
-  exit 1
-fi
-
-mkdir -p tmp/pgdata
-
-git fetch origin "$DEPLOY_BRANCH"
-git pull --ff-only origin "$DEPLOY_BRANCH"
-
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >/dev/null
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --remove-orphans
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+      - name: Run deploy script on server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          port="${DEPLOY_PORT:-22}"
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -p "$port" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "PROJECT_DIR='${DEPLOY_PATH}' DEPLOY_BRANCH='${DEPLOY_REF}' bash -s" < deploy/scripts/deploy-vm.sh
