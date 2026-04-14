@@ -15,7 +15,7 @@ export const OAuthButton = () => {
     setIsLoading(true)
     try {
       // 1. Получаем service_id
-      const serviceId = await dispatch(fetchServiceIdThunk()).unwrap()
+      const serviceId = 'e6fbef6d71bb475289408b575a0bf8b0'
 
       // 2. Формируем URL и делаем редирект
       const params = new URLSearchParams({
