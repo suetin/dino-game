@@ -48,7 +48,7 @@ app.post('/auth/login', (req: Request, res: Response) => {
   createSession(res)
   return res.json(MOCK_USER)
 })
-app.post('/auth/signin', (req: Request, res: Response) => {
+app.post('/api/auth/signin', (req: Request, res: Response) => {
   const { login, password } = req.body || {}
   if (!login || !password) {
     return res.status(400).json({ reason: 'Логин и пароль обязательны' })
@@ -57,15 +57,15 @@ app.post('/auth/signin', (req: Request, res: Response) => {
   return res.json(MOCK_USER)
 })
 
-app.get('/auth/user', (_req: Request, res: Response) => {
+app.get('/api/auth/user', (_req: Request, res: Response) => {
   res.json(MOCK_USER)
 })
 
-app.get('/oauth/yandex/service-id', (_req: Request, res: Response) => {
+app.get('/api/oauth/yandex/service-id', (_req: Request, res: Response) => {
   res.json({ service_id: 'e6fbef6d71bb475289408b575a0bf8b0' })
 })
 
-app.post('/oauth/yandex', (req: Request, res: Response) => {
+app.post('/api/oauth/yandex', (req: Request, res: Response) => {
   const { code, redirect_uri } = req.body || {}
 
   if (!code || !redirect_uri) {
@@ -84,7 +84,7 @@ app.post('/auth/register', (req: Request, res: Response) => {
   createSession(res)
   return res.status(201).json({ ...MOCK_USER, name, secondName, email })
 })
-app.post('/auth/signup', (req: Request, res: Response) => {
+app.post('/api/auth/signup', (req: Request, res: Response) => {
   const { email, password, first_name, second_name, login, phone } = req.body || {}
   if (!email || !password || !first_name || !second_name || !login || !phone) {
     return res.status(400).json({ reason: 'Заполните все обязательные поля' })
@@ -92,21 +92,21 @@ app.post('/auth/signup', (req: Request, res: Response) => {
   createSession(res)
   return res.status(200).json({ id: 1 })
 })
-app.post('/auth/logout', (req: Request, res: Response) => {
+app.post('/api/auth/logout', (req: Request, res: Response) => {
   destroySession(req, res)
   res.sendStatus(200)
 })
 
-app.put('/user/profile', (req: Request, res: Response) => {
+app.put('/api/user/profile', (req: Request, res: Response) => {
   const data = req.body
   return res.json({ ...MOCK_USER, ...data })
 })
 
-app.put('/user/profile/avatar', (_req: Request, res: Response) => {
+app.put('/api/user/profile/avatar', (_req: Request, res: Response) => {
   return res.json({ ...MOCK_USER, avatarUrl: '/path/to/avatar.jpg' })
 })
 
-app.delete('/user/profile/avatar', (_req: Request, res: Response) => {
+app.delete('/api/user/profile/avatar', (_req: Request, res: Response) => {
   return res.json({ ...MOCK_USER, avatarUrl: null })
 })
 

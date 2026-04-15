@@ -77,7 +77,7 @@ const postJsonOptions = {
 export const fetchUserThunk = createAsyncThunk(
   'user/fetchUserThunk',
   async (_, { rejectWithValue }) => {
-    const url = `${SERVER_HOST2}/auth/user`
+    const url = `${SERVER_HOST2}/api/auth/user`
     const res = await fetch(url, fetchOptions)
     if (!res.ok) {
       const text = await res.text()
@@ -96,7 +96,7 @@ export const fetchUserThunk = createAsyncThunk(
 export const loginThunk = createAsyncThunk(
   'user/login',
   async (credentials: { login: string; password: string }, { rejectWithValue }) => {
-    const res = await fetch(`${SERVER_HOST2}/auth/signin`, {
+    const res = await fetch(`${SERVER_HOST2}/api/auth/signin`, {
       ...postJsonOptions,
       body: JSON.stringify(credentials),
     })
@@ -122,7 +122,7 @@ export const registerThunk = createAsyncThunk(
     },
     { rejectWithValue }
   ) => {
-    const res = await fetch(`${SERVER_HOST2}/auth/signup`, {
+    const res = await fetch(`${SERVER_HOST2}/api/auth/signup`, {
       ...postJsonOptions,
       body: JSON.stringify(payload),
     })
@@ -136,7 +136,7 @@ export const registerThunk = createAsyncThunk(
 
 // 4. LOGOUT
 export const logoutThunk = createAsyncThunk('user/logout', async () => {
-  await fetch(`${SERVER_HOST2}/auth/logout`, { ...postJsonOptions })
+  await fetch(`${SERVER_HOST2}/api/auth/logout`, { ...postJsonOptions })
 })
 
 // 5. UPDATE USER
@@ -144,7 +144,7 @@ export const updateUserThunk = createAsyncThunk<
   User,
   { first_name: string; second_name: string; phone: string; email: string; display_name: string }
 >('user/updateUserThunk', async payload => {
-  const res = await fetch(`${SERVER_HOST2}/user/profile`, {
+  const res = await fetch(`${SERVER_HOST2}/api/user/profile`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -161,7 +161,7 @@ export const uploadAvatarThunk = createAsyncThunk<User, File>(
   async file => {
     const formData = new FormData()
     formData.append('avatar', file)
-    const res = await fetch(`${SERVER_HOST2}/user/profile/avatar`, {
+    const res = await fetch(`${SERVER_HOST2}/api/user/profile/avatar`, {
       ...fetchOptions,
       method: 'PUT',
       body: formData,
@@ -175,7 +175,7 @@ export const uploadAvatarThunk = createAsyncThunk<User, File>(
 
 // 7. DELETE AVATAR
 export const deleteAvatarThunk = createAsyncThunk<User>('user/deleteAvatarThunk', async () => {
-  const res = await fetch(`${SERVER_HOST2}/user/profile/avatar`, {
+  const res = await fetch(`${SERVER_HOST2}/api/user/profile/avatar`, {
     ...fetchOptions,
     method: 'DELETE',
   })
@@ -191,7 +191,7 @@ export const fetchServiceIdThunk = createAsyncThunk<string>(
   async (_, { rejectWithValue }) => {
     try {
       const res = await fetch(
-        `${SERVER_HOST2}/oauth/yandex/service-id?redirect_uri=${REDIRECT_URI}`,
+        `${SERVER_HOST2}/api/oauth/yandex/service-id?redirect_uri=${REDIRECT_URI}`,
         fetchOptions
       )
       if (!res.ok) {
@@ -210,7 +210,7 @@ export const fetchServiceIdThunk = createAsyncThunk<string>(
 export const oauthLoginThunk = createAsyncThunk<void, string>(
   'user/oauthLogin',
   async (code, { rejectWithValue }) => {
-    const res = await fetch(`${SERVER_HOST2}/oauth/yandex`, {
+    const res = await fetch(`${SERVER_HOST2}/api/oauth/yandex`, {
       ...postJsonOptions,
       body: JSON.stringify({ code, redirect_uri: REDIRECT_URI }),
     })
