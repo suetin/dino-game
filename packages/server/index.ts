@@ -48,6 +48,33 @@ app.post('/auth/login', (req: Request, res: Response) => {
   createSession(res)
   return res.json(MOCK_USER)
 })
+app.post('/auth/signin', (req: Request, res: Response) => {
+  const { login, password } = req.body || {}
+  if (!login || !password) {
+    return res.status(400).json({ reason: 'Логин и пароль обязательны' })
+  }
+  createSession(res)
+  return res.json(MOCK_USER)
+})
+
+app.get('/auth/user', (_req: Request, res: Response) => {
+  res.json(MOCK_USER)
+})
+
+app.get('/oauth/yandex/service-id', (_req: Request, res: Response) => {
+  res.json({ service_id: 'e6fbef6d71bb475289408b575a0bf8b0' })
+})
+
+app.post('/oauth/yandex', (req: Request, res: Response) => {
+  const { code, redirect_uri } = req.body || {}
+
+  if (!code || !redirect_uri) {
+    return res.status(400).json({ reason: 'code and redirect_uri are required' })
+  }
+
+  createSession(res)
+  return res.status(200).json({ ok: true })
+})
 
 app.post('/auth/register', (req: Request, res: Response) => {
   const { email, password, name, secondName } = req.body || {}
@@ -57,7 +84,14 @@ app.post('/auth/register', (req: Request, res: Response) => {
   createSession(res)
   return res.status(201).json({ ...MOCK_USER, name, secondName, email })
 })
-
+app.post('/auth/signup', (req: Request, res: Response) => {
+  const { email, password, first_name, second_name, login, phone } = req.body || {}
+  if (!email || !password || !first_name || !second_name || !login || !phone) {
+    return res.status(400).json({ reason: 'Заполните все обязательные поля' })
+  }
+  createSession(res)
+  return res.status(200).json({ id: 1 })
+})
 app.post('/auth/logout', (req: Request, res: Response) => {
   destroySession(req, res)
   res.sendStatus(200)
