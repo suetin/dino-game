@@ -118,7 +118,7 @@ const start = async () => {
   try {
     const { topicRouter } = await import('./routes/topicRouter')
     const { commentRouter } = await import('./routes/commentRouter')
-    const { themeRouter } = await import('./routes/themeRouter')
+    const { default: themeRouter } = await import('./routes/themeRouter')
     const { default: leaderboardRouter } = await import('./routes/leaderboardRouter')
 
     app.use('/api/forum/topics', requireAuth, topicRouter)
