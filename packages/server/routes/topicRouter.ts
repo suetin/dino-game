@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { Topic } from '../models/Topic'
 import { Comment } from '../models/Comment'
+import { sanitize } from '../middleware/sanitize'
 
 export const topicRouter = Router()
 
@@ -14,7 +15,7 @@ topicRouter.get('/', async (_req: Request, res: Response) => {
   }
 })
 
-topicRouter.post('/', async (req: Request, res: Response) => {
+topicRouter.post('/', sanitize, async (req: Request, res: Response) => {
   try {
     const { title, description, author_id } = req.body
 
@@ -23,19 +24,9 @@ topicRouter.post('/', async (req: Request, res: Response) => {
       return
     }
 
-    // Санитизация (упрощенная)
-    const sanitizedTitle = String(title)
-      .replace(/<[^>]*>?/gm, '')
-      .trim()
-    const sanitizedDescription = description
-      ? String(description)
-          .replace(/<[^>]*>?/gm, '')
-          .trim()
-      : ''
-
     const topic = await Topic.create({
-      title: sanitizedTitle,
-      description: sanitizedDescription,
+      title,
+      description: description || '',
       author_id,
     })
     res.status(201).json(topic)
@@ -77,7 +68,7 @@ topicRouter.get('/:id/comments', async (req: Request, res: Response) => {
   }
 })
 
-topicRouter.post('/:id/comments', async (req: Request, res: Response) => {
+topicRouter.post('/:id/comments', sanitize, async (req: Request, res: Response) => {
   try {
     const { content, author_id, parentId } = req.body
 
@@ -86,12 +77,8 @@ topicRouter.post('/:id/comments', async (req: Request, res: Response) => {
       return
     }
 
-    const sanitizedContent = String(content)
-      .replace(/<[^>]*>?/gm, '')
-      .trim()
-
     const comment = await Comment.create({
-      content: sanitizedContent,
+      content,
       author_id,
       topic_id: Number(req.params.id),
       parentId: parentId || null,

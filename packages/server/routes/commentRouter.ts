@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { Comment } from '../models/Comment'
 import { Reaction } from '../models/Reaction'
+import { sanitize } from '../middleware/sanitize'
 
 export const commentRouter = Router()
 
@@ -20,7 +21,7 @@ commentRouter.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-commentRouter.post('/:id/replies', async (req: Request, res: Response) => {
+commentRouter.post('/:id/replies', sanitize, async (req: Request, res: Response) => {
   try {
     const { content, author_id, topic_id } = req.body
 
@@ -29,12 +30,8 @@ commentRouter.post('/:id/replies', async (req: Request, res: Response) => {
       return
     }
 
-    const sanitizedContent = String(content)
-      .replace(/<[^>]*>?/gm, '')
-      .trim()
-
     const reply = await Comment.create({
-      content: sanitizedContent,
+      content,
       author_id,
       topic_id,
       parentId: Number(req.params.id),
@@ -58,7 +55,7 @@ commentRouter.get('/:id/reactions', async (req: Request, res: Response) => {
   }
 })
 
-commentRouter.post('/:id/reactions', async (req: Request, res: Response) => {
+commentRouter.post('/:id/reactions', sanitize, async (req: Request, res: Response) => {
   try {
     const { emoji, user_id } = req.body
 
@@ -67,12 +64,8 @@ commentRouter.post('/:id/reactions', async (req: Request, res: Response) => {
       return
     }
 
-    const sanitizedEmoji = String(emoji)
-      .replace(/<[^>]*>?/gm, '')
-      .trim()
-
     const reaction = await Reaction.create({
-      emoji: sanitizedEmoji,
+      emoji,
       user_id,
       comment_id: Number(req.params.id),
     })

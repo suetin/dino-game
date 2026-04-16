@@ -116,14 +116,18 @@ app.get('/', (_req: Request, res: Response) => {
 
 const start = async () => {
   try {
+    const { topicRouter } = await import('./routes/topicRouter')
+    const { commentRouter } = await import('./routes/commentRouter')
+    const { themeRouter } = await import('./routes/themeRouter')
+    const { default: leaderboardRouter } = await import('./routes/leaderboardRouter')
+
+    app.use('/api/forum/topics', requireAuth, topicRouter)
+    app.use('/api/forum/comments', requireAuth, commentRouter)
+    app.use('/api/theme', themeRouter)
+    app.use('/api/leaderboard', requireAuth, leaderboardRouter)
+
     if (!skipDB) {
       const { connectDB } = await import('./db')
-      const { topicRouter } = await import('./routes/topicRouter')
-      const { commentRouter } = await import('./routes/commentRouter')
-
-      app.use('/api/forum/topics', requireAuth, topicRouter)
-      app.use('/api/forum/comments', requireAuth, commentRouter)
-
       await connectDB()
     }
 
