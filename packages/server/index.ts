@@ -4,6 +4,7 @@ import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { createSession, destroySession } from './auth/session'
 import { requireAuth } from './middleware/requireAuth'
+import { sanitize } from './middleware/sanitize'
 
 const app = express()
 const port = Number(process.env.SERVER_PORT) || 3001
@@ -116,14 +117,16 @@ app.get('/', (_req: Request, res: Response) => {
 
 const start = async () => {
   try {
+    const { topicRouter } = await import('./routes/topicRouter')
+    const { commentRouter } = await import('./routes/commentRouter')
+    const { default: leaderboardRouter } = await import('./routes/leaderboardRouter')
+
+    app.use('/api/forum/topics', requireAuth, sanitize, topicRouter)
+    app.use('/api/forum/comments', requireAuth, sanitize, commentRouter)
+    app.use('/api/leaderboard', requireAuth, sanitize, leaderboardRouter)
+
     if (!skipDB) {
       const { connectDB } = await import('./db')
-      const { topicRouter } = await import('./routes/topicRouter')
-      const { commentRouter } = await import('./routes/commentRouter')
-
-      app.use('/api/forum/topics', requireAuth, topicRouter)
-      app.use('/api/forum/comments', requireAuth, commentRouter)
-
       await connectDB()
     }
 

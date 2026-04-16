@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express'
+import { sanitize } from '../middleware/sanitize'
 
 type LeaderboardEntryData = {
   name: string
@@ -23,7 +24,7 @@ type GetLeaderboardBody = {
   limit?: number
 }
 
-export const leaderboardRouter = Router()
+const leaderboardRouter = Router()
 
 const RATING_FIELD_NAME = 'score'
 
@@ -153,66 +154,71 @@ const leaderboardStore: LeaderboardEntry[] = [
 
 let nextId = leaderboardStore.length + 1
 
-leaderboardRouter.post('/', (req: Request<unknown, unknown, AddLeaderboardBody>, res: Response) => {
-  const { data, ratingFieldName } = req.body
+leaderboardRouter.post(
+  '/',
+  sanitize,
+  (req: Request<unknown, unknown, AddLeaderboardBody>, res: Response) => {
+    const { data, ratingFieldName } = req.body
 
-  if (ratingFieldName !== RATING_FIELD_NAME) {
-    return res.status(400).json({
-      reason: `ratingFieldName must be "${RATING_FIELD_NAME}"`,
-    })
-  }
-
-  if (!data?.name || typeof data.name !== 'string') {
-    return res.status(400).json({
-      reason: 'data.name is required',
-    })
-  }
-
-  if (typeof data.score !== 'number' || Number.isNaN(data.score)) {
-    return res.status(400).json({
-      reason: 'data.score must be a number',
-    })
-  }
-
-  const normalizedName = data.name.trim()
-  const now = new Date().toISOString()
-
-  const existingEntry = leaderboardStore.find(
-    entry => entry.data.name.toLowerCase() === normalizedName.toLowerCase()
-  )
-
-  if (existingEntry) {
-    if (data.score > existingEntry.data.score) {
-      existingEntry.data.score = data.score
-      existingEntry.updatedAt = now
+    if (ratingFieldName !== RATING_FIELD_NAME) {
+      return res.status(400).json({
+        reason: `ratingFieldName must be "${RATING_FIELD_NAME}"`,
+      })
     }
+
+    if (!data?.name || typeof data.name !== 'string') {
+      return res.status(400).json({
+        reason: 'data.name is required',
+      })
+    }
+
+    if (typeof data.score !== 'number' || Number.isNaN(data.score)) {
+      return res.status(400).json({
+        reason: 'data.score must be a number',
+      })
+    }
+
+    const normalizedName = data.name.trim()
+    const now = new Date().toISOString()
+
+    const existingEntry = leaderboardStore.find(
+      entry => entry.data.name.toLowerCase() === normalizedName.toLowerCase()
+    )
+
+    if (existingEntry) {
+      if (data.score > existingEntry.data.score) {
+        existingEntry.data.score = data.score
+        existingEntry.updatedAt = now
+      }
+
+      return res.json({
+        success: true,
+        data: existingEntry,
+      })
+    }
+
+    const newEntry: LeaderboardEntry = {
+      id: nextId++,
+      data: {
+        name: normalizedName,
+        score: data.score,
+      },
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    leaderboardStore.push(newEntry)
 
     return res.json({
       success: true,
-      data: existingEntry,
+      data: newEntry,
     })
   }
-
-  const newEntry: LeaderboardEntry = {
-    id: nextId++,
-    data: {
-      name: normalizedName,
-      score: data.score,
-    },
-    createdAt: now,
-    updatedAt: now,
-  }
-
-  leaderboardStore.push(newEntry)
-
-  return res.json({
-    success: true,
-    data: newEntry,
-  })
-})
+)
 
 leaderboardRouter.post(
   '/all',
+  sanitize,
   (req: Request<unknown, unknown, GetLeaderboardBody>, res: Response) => {
     const { ratingFieldName, cursor = 0, limit = 10 } = req.body
 
