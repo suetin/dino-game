@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
+import { SERVER_HOST2 } from '@/constants'
 
 export const LEADERBOARD_RATING_FIELD_NAME = 'score'
 export const LEADERBOARD_TEAM_NAME = 'dino-team'
@@ -73,7 +74,7 @@ export const submitLeaderboardResultThunk = createAsyncThunk<
   LeaderboardEntry[] | null,
   SubmitLeaderboardPayload
 >('leaderboard/submitLeaderboardResultThunk', async payload => {
-  const response = await fetch('https://ya-praktikum.tech/api/v2/leaderboard', {
+  const response = await fetch(`${SERVER_HOST2}/api/leaderboard`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -97,7 +98,7 @@ export const fetchLeaderboardThunk = createAsyncThunk<
   FetchLeaderboardResponse,
   FetchLeaderboardPayload | undefined
 >('leaderboard/fetchLeaderboardThunk', async payload => {
-  const response = await fetch('https://ya-praktikum.tech/api/v2/leaderboard/all', {
+  const response = await fetch(`${SERVER_HOST2}/api/leaderboard/all`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -115,8 +116,13 @@ export const fetchLeaderboardThunk = createAsyncThunk<
     throw new Error('Не удалось загрузить таблицу лидеров')
   }
 
-  const result = (await response.json()) as RawLeaderboardEntry[]
-  return result.map(normalizeLeaderboardEntry)
+  const result = (await response.json()) as {
+    data: RawLeaderboardEntry[]
+    cursor: number | null
+    total: number
+  }
+
+  return result.data.map(normalizeLeaderboardEntry)
 })
 
 export const leaderboardSlice = createSlice({
