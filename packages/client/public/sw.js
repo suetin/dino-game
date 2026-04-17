@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dino-game-cache-v2';
+const CACHE_NAME = 'dino-game-cache-v3';
 
 const URLS = [
   '/images/favicon.ico',
@@ -6,74 +6,54 @@ const URLS = [
   '/images/pwa-512x512.png',
 ];
 
-self.addEventListener("install", event => {
-  console.log("install");
+self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log("Opened cache");
-        return cache.addAll(URLS);
-      })
-      .catch(err => {
-        console.log(err);
-        throw err;
-      })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(URLS))
   );
 });
 
-self.addEventListener("activate", event => {
-  console.log("activate");
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
+    caches.keys().then(cacheNames =>
+      Promise.all(
         cacheNames
           .filter(name => name !== CACHE_NAME)
           .map(name => caches.delete(name))
       )
-    })
+    ).then(() => self.clients.claim())
   );
 });
-
 self.addEventListener('fetch', event => {
   const { request } = event;
 
   if (!request.url.startsWith('http')) {
     return;
   }
+  const url = new URL(request.url);
 
-  const isApiUrl = request.url.includes('/api/');
-  const isHtml = request.mode === 'navigate';
-
-  if (isApiUrl) {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response && response.status === 200 && response.type === 'basic') {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(request, responseToCache);
-            });
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cachedResponse = await caches.match(request);
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          
-          if (isApiUrl) {
-             return new Response(JSON.stringify({ message: 'Нет подключения к интернету' }), {
-               status: 503,
-               statusText: 'Service Unavailable',
-               headers: { 'Content-Type': 'application/json' }
-             });
-          }
-
-        })
-    );
+  if (request.method !== 'GET') {
     return;
   }
+  const isApiUrl = url.pathname.startsWith('/api/');
+  const isHtml = request.mode === 'navigate';
+  const isStaticAsset =
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/images/') ||
+    url.pathname === '/manifest.json' ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.jpeg') ||
+    url.pathname.endsWith('.svg') ||
+    url.pathname.endsWith('.ico') ||
+    url.pathname.endsWith('.woff') ||
+    url.pathname.endsWith('.woff2');
+
+    if (isApiUrl) {
+      return;
+    }
 
   if (isHtml) {
     event.respondWith(
@@ -105,7 +85,9 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
-
+  if (!isStaticAsset) {
+    return;
+  }
   event.respondWith(
     caches.match(request)
       .then(response => {
