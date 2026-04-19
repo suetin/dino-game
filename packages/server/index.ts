@@ -436,10 +436,20 @@ const start = async () => {
     app.use('/api/forum/comments', requireAuth, sanitize, commentRouter)
     app.use('/api/leaderboard', requireAuth, sanitize, leaderboardRouter)
 
-    // eslint-disable-next-line no-constant-condition
-    if (false) {
+    const hasDatabaseConfig =
+      Boolean(process.env.DATABASE_URL?.trim()) ||
+      Boolean(
+        process.env.POSTGRES_USER &&
+          process.env.POSTGRES_PASSWORD &&
+          process.env.POSTGRES_DB &&
+          process.env.POSTGRES_PORT
+      )
+
+    if (hasDatabaseConfig) {
       const { connectDB } = await import('./db')
       await connectDB()
+    } else {
+      console.warn('[db] DB config is missing, forum and leaderboard routes require PostgreSQL')
     }
 
     app.listen(port, () => {
