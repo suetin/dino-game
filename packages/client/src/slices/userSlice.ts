@@ -11,8 +11,10 @@ export interface User {
   first_name: string
   second_name: string
   phone?: string
+  avatar?: string | null
   avatarUrl?: string | null
   email?: string
+  display_name?: string
   displayName?: string
   userName?: string
   login?: string
@@ -39,27 +41,59 @@ const initialState: UserState = {
   avatarStatus: 'idle',
 }
 
-type PraktikumUser = {
-  id: number
-  first_name: string
-  second_name: string
-  display_name: string | null
-  login: string
-  email: string
-  phone: string
-  avatar: string | null
+type UserResponse = {
+  id?: number | string
+  first_name?: string | null
+  second_name?: string | null
+  display_name?: string | null
+  displayName?: string | null
+  login?: string | null
+  userName?: string | null
+  email?: string | null
+  phone?: string | null
+  avatar?: string | null
+  avatarUrl?: string | null
 }
 
-const mapPraktikumUser = (user: PraktikumUser): User => ({
-  id: String(user.id),
-  first_name: user.first_name,
-  second_name: user.second_name,
-  displayName: user.display_name ?? '',
-  login: user.login,
-  email: user.email,
-  phone: user.phone,
-  avatarUrl: user.avatar ? `https://ya-praktikum.tech/api/v2/resources/${user.avatar}` : null,
-})
+const getAvatarUrl = (user: UserResponse) => {
+  if (user.avatarUrl) {
+    return user.avatarUrl
+  }
+
+  if (!user.avatar) {
+    return null
+  }
+
+  if (
+    user.avatar.startsWith('data:') ||
+    user.avatar.startsWith('http://') ||
+    user.avatar.startsWith('https://') ||
+    user.avatar.startsWith('/')
+  ) {
+    return user.avatar
+  }
+
+  return `https://ya-praktikum.tech/api/v2/resources/${user.avatar}`
+}
+
+const normalizeUser = (user: UserResponse): User => {
+  const displayName = user.display_name ?? user.displayName ?? ''
+  const login = user.login ?? user.userName ?? ''
+
+  return {
+    id: user.id !== undefined ? String(user.id) : undefined,
+    first_name: user.first_name ?? '',
+    second_name: user.second_name ?? '',
+    phone: user.phone ?? '',
+    avatar: user.avatar ?? null,
+    avatarUrl: getAvatarUrl(user),
+    email: user.email ?? '',
+    display_name: displayName,
+    displayName,
+    userName: login,
+    login,
+  }
+}
 
 const fetchOptions = {
   credentials: 'include' as const,
@@ -87,8 +121,8 @@ export const fetchUserThunk = createAsyncThunk(
       throw new Error(text || `Ошибка ${res.status}`)
     }
 
-    const user = (await res.json()) as PraktikumUser
-    return mapPraktikumUser(user)
+    const user = (await res.json()) as UserResponse
+    return normalizeUser(user)
   }
 )
 
@@ -130,7 +164,13 @@ export const registerThunk = createAsyncThunk(
       const data = await res.json().catch(() => ({}))
       return rejectWithValue(data.reason || `Ошибка регистрации ${res.status}`)
     }
-    return { id: (await res.json()).id } as User
+
+    const user = (await res.json().catch(() => ({}))) as UserResponse
+
+    return normalizeUser({
+      ...payload,
+      ...user,
+    })
   }
 )
 
@@ -145,6 +185,7 @@ export const updateUserThunk = createAsyncThunk<
   { first_name: string; second_name: string; phone: string; email: string; display_name: string }
 >('user/updateUserThunk', async payload => {
   const res = await fetch(`${SERVER_HOST2}/api/user/profile`, {
+    ...fetchOptions,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -152,7 +193,9 @@ export const updateUserThunk = createAsyncThunk<
   if (!res.ok) {
     throw new Error('Ошибка обновления профиля')
   }
-  return res.json() as Promise<User>
+
+  const user = (await res.json()) as UserResponse
+  return normalizeUser(user)
 })
 
 // 6. UPLOAD AVATAR
@@ -169,7 +212,9 @@ export const uploadAvatarThunk = createAsyncThunk<User, File>(
     if (!res.ok) {
       throw new Error('Ошибка загрузки аватара')
     }
-    return res.json() as Promise<User>
+
+    const user = (await res.json()) as UserResponse
+    return normalizeUser(user)
   }
 )
 
@@ -182,7 +227,9 @@ export const deleteAvatarThunk = createAsyncThunk<User>('user/deleteAvatarThunk'
   if (!res.ok) {
     throw new Error('Ошибка удаления аватара')
   }
-  return res.json() as Promise<User>
+
+  const user = (await res.json()) as UserResponse
+  return normalizeUser(user)
 })
 
 // 8. OAUTH - GET SERVICE ID

@@ -6,6 +6,7 @@ type UserLike = {
   phone?: string | null
   email?: string | null
   display_name?: string | null
+  displayName?: string | null
 }
 
 export const emptyProfileForm: ProfileFormState = {
@@ -22,6 +23,6 @@ export function mapUserToProfileForm(user: UserLike): ProfileFormState {
     second_name: user.second_name ?? '',
     phone: user.phone ?? '',
     email: user.email ?? '',
-    display_name: user.display_name ?? '',
+    display_name: user.display_name ?? user.displayName ?? '',
   }
 }

@@ -109,7 +109,7 @@ const ProfilePage = () => {
 
     if (!user) return
 
-    await dispatch(updateUserThunk(mapUserToProfileForm(user)))
+    await dispatch(updateUserThunk(form))
 
     setIsEdit(false)
   }
