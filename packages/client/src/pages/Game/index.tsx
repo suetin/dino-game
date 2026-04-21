@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type MouseEvent } from 'react'
 import { usePage } from '@/hooks/usePage'
 import { useDispatch, useSelector } from '@/store'
 import {
@@ -28,6 +28,11 @@ export const GamePage = () => {
 
   usePage({ initPage: initGamePage })
 
+  const handleFullscreenClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.currentTarget.blur()
+    await toggleFullscreen()
+  }
+
   const renderContent = () => {
     if (phase === 'start') {
       return <StartScreen onStart={() => dispatch(startGame())} />
@@ -53,9 +58,10 @@ export const GamePage = () => {
       {/* Общий контейнер для игры и кнопки Fullscreen */}
       <div ref={pageRef} className="dino-page relative group">
         <Button
+          type="button"
           variant="outline"
           size="sm"
-          onClick={toggleFullscreen}
+          onClick={handleFullscreenClick}
           className="absolute top-6 left-1/2 -translate-x-1/2 z-10 gap-2 text-sm p-6 bg-border text-muted-foreground">
           {isFullscreen ? (
             <>
