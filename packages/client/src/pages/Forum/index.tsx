@@ -7,6 +7,7 @@ import {
   fetchCommentsThunk,
   createTopicThunk,
   createCommentThunk,
+  selectForumDataSource,
   selectTopics,
   selectCurrentComments,
   selectForumLoading,
@@ -24,6 +25,7 @@ export const ForumPage = () => {
   const dispatch = useDispatch()
   const topics = useSelector(selectTopics)
   const comments = useSelector(selectCurrentComments)
+  const dataSource = useSelector(selectForumDataSource)
   const isLoading = useSelector(selectForumLoading)
   const user = useSelector(selectUser)
   const serverError = useSelector((state: RootState) => state.forum.error)
@@ -116,6 +118,15 @@ export const ForumPage = () => {
         <Alert variant="destructive" className="mb-6">
           <AlertTitle>Ошибка сервера</AlertTitle>
           <AlertDescription>{serverError}</AlertDescription>
+        </Alert>
+      )}
+
+      {dataSource === 'cache' && (
+        <Alert className="mb-6">
+          <AlertTitle>Нет сети</AlertTitle>
+          <AlertDescription>
+            Показана сохраненная версия форума. Данные могут быть устаревшими.
+          </AlertDescription>
         </Alert>
       )}
 

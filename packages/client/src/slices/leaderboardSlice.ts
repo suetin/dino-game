@@ -4,8 +4,10 @@ import { SERVER_HOST2 } from '@/constants'
 
 export const LEADERBOARD_RATING_FIELD_NAME = 'score'
 export const LEADERBOARD_TEAM_NAME = 'dino-team'
+const LEADERBOARD_CACHE_KEY = 'dino-game-leaderboard-cache-v1'
 
 type RequestStatus = 'idle' | 'pending' | 'success' | 'error'
+type DataSource = 'network' | 'cache'
 
 export type LeaderboardEntry = {
   data: {
@@ -34,6 +36,7 @@ export interface LeaderboardState {
   hasMore: boolean
   fetchStatus: RequestStatus
   submitStatus: RequestStatus
+  dataSource: DataSource
 }
 
 const initialState: LeaderboardState = {
@@ -45,6 +48,7 @@ const initialState: LeaderboardState = {
   hasMore: true,
   fetchStatus: 'idle',
   submitStatus: 'idle',
+  dataSource: 'network',
 }
 
 type RawLeaderboardEntry = {
@@ -69,6 +73,45 @@ const normalizeLeaderboardEntry = (entry: RawLeaderboardEntry): LeaderboardEntry
 })
 
 type FetchLeaderboardResponse = LeaderboardEntry[]
+
+type LeaderboardSnapshot = {
+  entries: LeaderboardEntry[]
+}
+
+const loadLeaderboardSnapshot = (): LeaderboardSnapshot | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LEADERBOARD_CACHE_KEY)
+
+    if (!raw) {
+      return null
+    }
+
+    return JSON.parse(raw) as LeaderboardSnapshot
+  } catch (error) {
+    return null
+  }
+}
+
+const saveLeaderboardSnapshot = (entries: LeaderboardEntry[]) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      LEADERBOARD_CACHE_KEY,
+      JSON.stringify({ entries } satisfies LeaderboardSnapshot)
+    )
+  } catch (error) {
+    return
+  }
+}
+
+const isNetworkFailure = (message?: string) => message === 'Failed to fetch'
 
 export const submitLeaderboardResultThunk = createAsyncThunk<
   LeaderboardEntry[] | null,
@@ -97,7 +140,7 @@ export const submitLeaderboardResultThunk = createAsyncThunk<
 export const fetchLeaderboardThunk = createAsyncThunk<
   FetchLeaderboardResponse,
   FetchLeaderboardPayload | undefined
->('leaderboard/fetchLeaderboardThunk', async payload => {
+>('leaderboard/fetchLeaderboardThunk', async (payload, { getState }) => {
   const response = await fetch(`${SERVER_HOST2}/api/leaderboard/all`, {
     method: 'POST',
     headers: {
@@ -122,7 +165,14 @@ export const fetchLeaderboardThunk = createAsyncThunk<
     total: number
   }
 
-  return result.data.map(normalizeLeaderboardEntry)
+  const entries = result.data.map(normalizeLeaderboardEntry)
+  const state = getState() as RootState
+  const shouldAppend = payload?.append ?? false
+  const nextEntries = shouldAppend ? [...state.leaderboard.entries, ...entries] : entries
+
+  saveLeaderboardSnapshot(nextEntries)
+
+  return entries
 })
 
 export const leaderboardSlice = createSlice({
@@ -135,6 +185,7 @@ export const leaderboardSlice = createSlice({
       state.hasMore = true
       state.error = null
       state.fetchStatus = 'idle'
+      state.dataSource = 'network'
     },
     resetLeaderboardStatuses(state) {
       state.fetchStatus = 'idle'
@@ -167,6 +218,7 @@ export const leaderboardSlice = createSlice({
       .addCase(fetchLeaderboardThunk.fulfilled, (state, action) => {
         state.isLoading = false
         state.fetchStatus = 'success'
+        state.dataSource = 'network'
 
         const append = action.meta.arg?.append ?? false
         const limit = action.meta.arg?.limit ?? 10
@@ -182,8 +234,21 @@ export const leaderboardSlice = createSlice({
       })
       .addCase(fetchLeaderboardThunk.rejected, (state, action) => {
         state.isLoading = false
+        const snapshot = loadLeaderboardSnapshot()
+
+        if (isNetworkFailure(action.error.message) && snapshot) {
+          state.entries = snapshot.entries
+          state.total = snapshot.entries.length
+          state.hasMore = false
+          state.fetchStatus = 'success'
+          state.error = null
+          state.dataSource = 'cache'
+          return
+        }
+
         state.fetchStatus = 'error'
         state.error = action.error.message ?? 'Ошибка загрузки таблицы лидеров'
+        state.dataSource = 'network'
       })
   },
 })
@@ -205,5 +270,7 @@ export const selectLeaderboardHasMore = (state: RootState) => state.leaderboard.
 export const selectLeaderboardFetchStatus = (state: RootState) => state.leaderboard.fetchStatus
 
 export const selectLeaderboardSubmitStatus = (state: RootState) => state.leaderboard.submitStatus
+
+export const selectLeaderboardDataSource = (state: RootState) => state.leaderboard.dataSource
 
 export default leaderboardSlice.reducer

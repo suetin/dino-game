@@ -1,8 +1,16 @@
-const SHELL_CACHE_NAME = 'dino-game-shell-v4';
+const SHELL_CACHE_NAME = 'dino-game-shell-v5';
 const ASSET_CACHE_NAME = 'dino-game-assets-v4';
+const APP_SHELL_URL = '/';
 
-const SHELL_URLS = [
+const PUBLIC_DOCUMENT_PATHS = new Set([
   '/',
+  '/login',
+  '/register',
+  '/500',
+]);
+
+const PRECACHE_URLS = [
+  APP_SHELL_URL,
   '/login',
   '/register',
   '/500',
@@ -70,6 +78,10 @@ function isNavigationRequest(request) {
   return request.mode === 'navigate';
 }
 
+function isPublicDocumentPath(pathname) {
+  return PUBLIC_DOCUMENT_PATHS.has(pathname);
+}
+
 function isStaticAssetRequest(url) {
   if (url.pathname === '/sw.js') {
     return false;
@@ -91,7 +103,7 @@ function isStaticAssetRequest(url) {
   );
 }
 
-async function addShellEntry(cache, url) {
+async function addPrecacheEntry(cache, url) {
   try {
     const response = await fetch(url, { cache: 'no-cache' });
 
@@ -114,6 +126,23 @@ async function cacheStaticResponse(request, response) {
   return response;
 }
 
+async function cachePublicDocumentResponse(request, response) {
+  if (!response || !response.ok) {
+    return response;
+  }
+
+  const url = new URL(request.url);
+
+  if (!isPublicDocumentPath(url.pathname)) {
+    return response;
+  }
+
+  const cache = await caches.open(SHELL_CACHE_NAME);
+  await cache.put(request, response.clone());
+
+  return response;
+}
+
 function createOfflineResponse() {
   return new Response(OFFLINE_HTML, {
     status: 200,
@@ -121,11 +150,24 @@ function createOfflineResponse() {
   });
 }
 
+async function getNavigationFallback(request) {
+  const shellCache = await caches.open(SHELL_CACHE_NAME);
+  const cachedResponse = await shellCache.match(request);
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const cachedShell = await shellCache.match(APP_SHELL_URL);
+  return cachedShell || null;
+}
+
 async function handleNavigationRequest(request) {
   try {
-    return await fetch(request);
+    const networkResponse = await fetch(request);
+    return await cachePublicDocumentResponse(request, networkResponse);
   } catch (error) {
-    const cachedResponse = await caches.match(request);
+    const cachedResponse = await getNavigationFallback(request);
     return cachedResponse || createOfflineResponse();
   }
 }
@@ -149,7 +191,7 @@ self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(SHELL_CACHE_NAME).then(cache =>
-      Promise.allSettled(SHELL_URLS.map(url => addShellEntry(cache, url)))
+      Promise.allSettled(PRECACHE_URLS.map(url => addPrecacheEntry(cache, url)))
     )
   );
 });
