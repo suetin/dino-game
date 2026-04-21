@@ -4,14 +4,16 @@ const PHONE_REGEX = /^\+?[0-9]{10,15}$/
 const LOGIN_REGEX = /^(?=.*[a-zA-Z])[a-zA-Z0-9_-]{3,20}$/
 
 // Функция экранирования HTML (защита от XSS)
+const ESCAPE_MAP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}
+
 export function escapeHTML(str: string): string {
-  if (!str) return str
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
+  return String(str ?? '').replace(/[&<>"']/g, char => ESCAPE_MAP[char])
 }
 
 export function validateRequired(value: string, fieldName: string): string {

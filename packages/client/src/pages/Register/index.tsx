@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from '@/store'
 import { registerThunk, selectUser, selectAuthError, clearAuthError } from '@/slices/userSlice'
 import {
-  escapeHTML,
   validateEmail,
   validatePassword,
   validatePasswordMatch,
@@ -69,12 +68,12 @@ export const RegisterPage = () => {
     setErrors({})
     dispatch(
       registerThunk({
-        email: escapeHTML(email.trim()),
-        password, // пароль обычно не экранируют
-        first_name: escapeHTML(first_name.trim()),
-        second_name: escapeHTML(second_name.trim()),
-        login: escapeHTML(login),
-        phone: escapeHTML(phone.trim()),
+        email: email.trim(),
+        password,
+        first_name: first_name.trim(),
+        second_name: second_name.trim(),
+        login: login,
+        phone: phone.trim(),
       })
     )
   }

@@ -56,8 +56,8 @@ export const ForumPage = () => {
 
     const result = await dispatch(
       createTopicThunk({
-        title: escapeHTML(newTopicTitle),
-        description: escapeHTML(newTopicDesc),
+        title: newTopicTitle,
+        description: newTopicDesc,
         author_id: String(authorId),
       })
     )
@@ -79,7 +79,7 @@ export const ForumPage = () => {
 
     await dispatch(
       createCommentThunk({
-        content: escapeHTML(newComment),
+        content: newComment,
         author_id: String(authorId),
         topic_id: selectedTopic.id,
       })
@@ -135,8 +135,11 @@ export const ForumPage = () => {
               className="cursor-pointer transition-colors hover:bg-foreground"
               onClick={() => handleSelectTopic(topic)}>
               <CardHeader>
-                <CardTitle>{topic.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{topic.description}</p>
+                <CardTitle dangerouslySetInnerHTML={{ __html: escapeHTML(topic.title) }} />
+                <p
+                  className="text-sm text-muted-foreground"
+                  dangerouslySetInnerHTML={{ __html: escapeHTML(topic.description) }}
+                />
               </CardHeader>
             </Card>
           ))}
@@ -178,8 +181,14 @@ export const ForumPage = () => {
       {selectedTopic && (
         <div className="space-y-6">
           <div className="bg-card p-6 rounded-lg border">
-            <h2 className="text-2xl text-primary font-bold">{selectedTopic.title}</h2>
-            <p className="mt-2 text-lg text-muted-foreground">{selectedTopic.description}</p>
+            <h2
+              className="text-2xl text-primary font-bold"
+              dangerouslySetInnerHTML={{ __html: escapeHTML(selectedTopic.title) }}
+            />
+            <p
+              className="mt-2 text-lg text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: escapeHTML(selectedTopic.description) }}
+            />
           </div>
 
           <Separator />
@@ -201,7 +210,10 @@ export const ForumPage = () => {
                       {new Date(comment.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-base text-primary-foreground">{comment.content}</p>
+                  <p
+                    className="text-base text-primary-foreground"
+                    dangerouslySetInnerHTML={{ __html: escapeHTML(comment.content) }}
+                  />
                 </div>
               ))}
             </div>

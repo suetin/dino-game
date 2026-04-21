@@ -10,9 +10,7 @@ const initialState: ForumState = {
   error: null,
 }
 
-const fetchOptions = {
-  credentials: 'include' as const,
-}
+const fetchOptions = {}
 
 const getAuthHeaders = (state: RootState) => {
   const userId = state.user.data?.id || '1'
