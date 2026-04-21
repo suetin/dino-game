@@ -3,6 +3,17 @@ const MIN_PASSWORD_LENGTH = 6
 const PHONE_REGEX = /^\+?[0-9]{10,15}$/
 const LOGIN_REGEX = /^(?=.*[a-zA-Z])[a-zA-Z0-9_-]{3,20}$/
 
+// Функция экранирования HTML (защита от XSS)
+export function escapeHTML(str: string): string {
+  if (!str) return str
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 export function validateRequired(value: string, fieldName: string): string {
   const trimmed = value.trim()
   if (!trimmed) {

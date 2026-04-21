@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { escapeHTML } from '@/lib/validation'
 
 export const ForumPage = () => {
   const dispatch = useDispatch()
@@ -55,8 +56,8 @@ export const ForumPage = () => {
 
     const result = await dispatch(
       createTopicThunk({
-        title: newTopicTitle,
-        description: newTopicDesc,
+        title: escapeHTML(newTopicTitle),
+        description: escapeHTML(newTopicDesc),
         author_id: String(authorId),
       })
     )
@@ -78,7 +79,7 @@ export const ForumPage = () => {
 
     await dispatch(
       createCommentThunk({
-        content: newComment,
+        content: escapeHTML(newComment),
         author_id: String(authorId),
         topic_id: selectedTopic.id,
       })

@@ -25,6 +25,7 @@ import {
   ProfileFormState,
   validateProfile,
 } from '@/pages/Profile/utils/validation'
+import { escapeHTML } from '@/lib/validation'
 import { DefaultAvatarIcon } from '@/pages/Profile/ui/DefaultAvatarIcon'
 import { emptyProfileForm, mapUserToProfileForm } from '@/pages/Profile/utils/mappers'
 import { validateAvatarFile } from '@/pages/Profile/utils/avatar.utils'
@@ -109,7 +110,16 @@ const ProfilePage = () => {
 
     if (!user) return
 
-    await dispatch(updateUserThunk(form))
+    const sanitizedForm = {
+      ...form,
+      first_name: escapeHTML(form.first_name),
+      second_name: escapeHTML(form.second_name),
+      display_name: escapeHTML(form.display_name),
+      phone: escapeHTML(form.phone),
+      email: escapeHTML(form.email),
+    }
+
+    await dispatch(updateUserThunk(sanitizedForm))
 
     setIsEdit(false)
   }

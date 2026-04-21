@@ -8,7 +8,7 @@ import {
   selectAuthError,
   clearAuthError,
 } from '@/slices/userSlice'
-import { validateLogin, validatePassword } from '@/lib/validation'
+import { escapeHTML, validateLogin, validatePassword } from '@/lib/validation'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
@@ -53,15 +53,13 @@ export const LoginPage = () => {
 
     setErrors({})
 
-    // Новая двухшаговая логика
-    dispatch(loginThunk({ login: login, password }))
+    // Экранируем логин перед отправкой, пароль оставляем как есть
+    dispatch(loginThunk({ login: escapeHTML(login), password }))
       .unwrap()
       .then(() => {
-        // После успешного логина, запрашиваем данные пользователя
         return dispatch(fetchUserThunk()).unwrap()
       })
       .catch(err => {
-        // Ошибка будет обработана в extraReducers и отображена через selectAuthError
         console.error('Login failed:', err)
       })
   }
