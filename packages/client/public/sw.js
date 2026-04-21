@@ -1,43 +1,81 @@
-const CACHE_NAME = 'dino-game-cache-v3';
+const SHELL_CACHE_NAME = 'dino-game-shell-v4';
+const ASSET_CACHE_NAME = 'dino-game-assets-v4';
 
-const URLS = [
+const SHELL_URLS = [
+  '/',
+  '/login',
+  '/register',
+  '/500',
+  '/manifest.json',
   '/images/favicon.ico',
   '/images/pwa-192x192.png',
   '/images/pwa-512x512.png',
 ];
 
-self.addEventListener('install', event => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(URLS))
-  );
-});
+const OFFLINE_HTML = `
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нет сети</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background-color: #11121d;
+        color: #eef1fa;
+        font-family: Inter, system-ui, sans-serif;
+        text-align: center;
+      }
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
-      )
-    ).then(() => self.clients.claim())
-  );
-});
-self.addEventListener('fetch', event => {
-  const { request } = event;
+      main {
+        max-width: 420px;
+      }
 
-  if (!request.url.startsWith('http')) {
-    return;
+      h1 {
+        margin: 0 0 12px;
+        font-size: 28px;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.5;
+        color: #c7cfdd;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Нет сети</h1>
+      <p>Данные недоступны офлайн. После первого онлайн-открытия приложение загрузит кешированный shell и статику, но динамические данные требуют интернет.</p>
+    </main>
+  </body>
+</html>
+`;
+
+function isHttpRequest(request) {
+  return request.url.startsWith('http');
+}
+
+function isApiRequest(url) {
+  return url.pathname.startsWith('/api/');
+}
+
+function isNavigationRequest(request) {
+  return request.mode === 'navigate';
+}
+
+function isStaticAssetRequest(url) {
+  if (url.pathname === '/sw.js') {
+    return false;
   }
-  const url = new URL(request.url);
 
-  if (request.method !== 'GET') {
-    return;
-  }
-  const isApiUrl = url.pathname.startsWith('/api/');
-  const isHtml = request.mode === 'navigate';
-  const isStaticAsset =
+  return (
     url.pathname.startsWith('/assets/') ||
     url.pathname.startsWith('/images/') ||
     url.pathname === '/manifest.json' ||
@@ -49,66 +87,111 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.ico') ||
     url.pathname.endsWith('.woff') ||
-    url.pathname.endsWith('.woff2');
-
-    if (isApiUrl) {
-      return;
-    }
-
-  if (isHtml) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(
-          `
-          <!DOCTYPE html>
-          <html lang="ru">
-            <head>
-              <meta charset="UTF-8">
-              <title>Вы оффлайн</title>
-              <style>
-                body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #11121D}
-                h1 { color: #EEF1FA; }
-              </style>
-            </head>
-            <body>
-              <h1>Нет подключения к интернету</h1>
-              <p>Пожалуйста, проверьте ваше соединение и обновите страницу.</p>
-            </body>
-          </html>
-          `,
-          {
-            status: 200,
-            headers: { 'Content-Type': 'text/html' }
-          }
-        );
-      })
-    );
-    return;
-  }
-  if (!isStaticAsset) {
-    return;
-  }
-  event.respondWith(
-    caches.match(request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-
-        const fetchRequest = request.clone();
-        return fetch(fetchRequest)
-          .then(response => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(request, responseToCache);
-              });
-            return response;
-          });
-      })
+    url.pathname.endsWith('.woff2')
   );
+}
+
+async function addShellEntry(cache, url) {
+  try {
+    const response = await fetch(url, { cache: 'no-cache' });
+
+    if (response.ok) {
+      await cache.put(url, response.clone());
+    }
+  } catch (error) {
+    return undefined;
+  }
+}
+
+async function cacheStaticResponse(request, response) {
+  if (!response || response.status !== 200 || response.type !== 'basic') {
+    return response;
+  }
+
+  const cache = await caches.open(ASSET_CACHE_NAME);
+  await cache.put(request, response.clone());
+
+  return response;
+}
+
+function createOfflineResponse() {
+  return new Response(OFFLINE_HTML, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=UTF-8' },
+  });
+}
+
+async function handleNavigationRequest(request) {
+  try {
+    return await fetch(request);
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    return cachedResponse || createOfflineResponse();
+  }
+}
+
+async function handleStaticAssetRequest(request) {
+  const cachedResponse = await caches.match(request);
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  try {
+    const networkResponse = await fetch(request);
+    return await cacheStaticResponse(request, networkResponse);
+  } catch (error) {
+    return Response.error();
+  }
+}
+
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(SHELL_CACHE_NAME).then(cache =>
+      Promise.allSettled(SHELL_URLS.map(url => addShellEntry(cache, url)))
+    )
+  );
+});
+
+self.addEventListener('activate', event => {
+  const allowedCacheNames = [SHELL_CACHE_NAME, ASSET_CACHE_NAME];
+
+  event.waitUntil(
+    caches
+      .keys()
+      .then(cacheNames =>
+        Promise.all(
+          cacheNames
+            .filter(name => !allowedCacheNames.includes(name))
+            .map(name => caches.delete(name))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const { request } = event;
+
+  if (request.method !== 'GET' || !isHttpRequest(request)) {
+    return;
+  }
+
+  const url = new URL(request.url);
+
+  if (url.origin !== self.location.origin || isApiRequest(url)) {
+    return;
+  }
+
+  if (isNavigationRequest(request)) {
+    event.respondWith(handleNavigationRequest(request));
+    return;
+  }
+
+  if (!isStaticAssetRequest(url)) {
+    return;
+  }
+
+  event.respondWith(handleStaticAssetRequest(request));
 });
