@@ -1,26 +1,195 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { RootState } from '@/store'
 import { SERVER_HOST2 } from '@/constants'
-import { Topic, Comment, ForumState } from './forum.types'
+import { Topic, Comment, ForumState, ReactionSummaryItem } from './forum.types'
+
+export const FORUM_REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '😢', '👎'] as const
+
+type ToggleReactionPayload = {
+  commentId: number
+  emoji: string
+}
+
+type ToggleReactionResponse = {
+  status: 'added' | 'removed'
+  comment_id: number
+  reactionSummary: ReactionSummaryItem[]
+  myReactions: string[]
+}
+
+const FORUM_TOPICS_CACHE_KEY = 'dino-game-forum-topics-cache-v1'
+const FORUM_COMMENTS_CACHE_PREFIX = 'dino-game-forum-comments-cache-v1'
+
+type TopicsSnapshot = {
+  topics: Topic[]
+}
+
+type CommentsSnapshot = {
+  comments: Comment[]
+}
+
+const getCommentsCacheKey = (topicId: number) => `${FORUM_COMMENTS_CACHE_PREFIX}:${topicId}`
+
+const loadTopicsSnapshot = (): TopicsSnapshot | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FORUM_TOPICS_CACHE_KEY)
+
+    if (!raw) {
+      return null
+    }
+
+    return JSON.parse(raw) as TopicsSnapshot
+  } catch (error) {
+    return null
+  }
+}
+
+const saveTopicsSnapshot = (topics: Topic[]) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      FORUM_TOPICS_CACHE_KEY,
+      JSON.stringify({ topics } satisfies TopicsSnapshot)
+    )
+  } catch (error) {
+    return
+  }
+}
+
+const loadCommentsSnapshot = (topicId: number): CommentsSnapshot | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getCommentsCacheKey(topicId))
+
+    if (!raw) {
+      return null
+    }
+
+    return JSON.parse(raw) as CommentsSnapshot
+  } catch (error) {
+    return null
+  }
+}
+
+const saveCommentsSnapshot = (topicId: number, comments: Comment[]) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      getCommentsCacheKey(topicId),
+      JSON.stringify({ comments } satisfies CommentsSnapshot)
+    )
+  } catch (error) {
+    return
+  }
+}
+
+const isNetworkFailure = (message?: string) => message === 'Failed to fetch'
 
 const initialState: ForumState = {
   topics: [],
   currentComments: [],
   isLoading: false,
   error: null,
+  latestReactionRequestByCommentId: {},
+  dataSource: 'network',
 }
 
-const fetchOptions = {
+const fetchOptions = {}
+const fetchWithCredentials = {
+  ...fetchOptions,
   credentials: 'include' as const,
 }
 
 const getAuthHeaders = (state: RootState) => {
-  const userId = state.user.data?.id || '1'
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-auth-user-id': String(userId),
+  }
+
+  const userId = state.user.data?.id
+  if (userId) {
+    headers['x-auth-user-id'] = String(userId)
+  }
+
+  return headers
+}
+
+const normalizeCommentTree = (comment: Comment): Comment => ({
+  ...comment,
+  reactionSummary: Array.isArray(comment.reactionSummary) ? comment.reactionSummary : [],
+  myReactions: Array.isArray(comment.myReactions) ? comment.myReactions : [],
+  replies: Array.isArray(comment.replies) ? comment.replies.map(normalizeCommentTree) : [],
+})
+
+const sortReactionSummary = (summary: ReactionSummaryItem[]) => {
+  const order: Record<string, number> = {}
+  FORUM_REACTION_EMOJIS.forEach((emoji, index) => {
+    order[emoji] = index
+  })
+  return [...summary].sort((left, right) => (order[left.emoji] || 0) - (order[right.emoji] || 0))
+}
+
+const toggleLocalReaction = (comment: Comment, emoji: string): Comment => {
+  const reactionSummaryMap = new Map(comment.reactionSummary.map(item => [item.emoji, item.count]))
+  const myReactionsSet = new Set(comment.myReactions)
+  const alreadySelected = myReactionsSet.has(emoji)
+
+  if (alreadySelected) {
+    myReactionsSet.delete(emoji)
+    const nextCount = Math.max((reactionSummaryMap.get(emoji) || 0) - 1, 0)
+    if (nextCount === 0) {
+      reactionSummaryMap.delete(emoji)
+    } else {
+      reactionSummaryMap.set(emoji, nextCount)
+    }
+  } else {
+    myReactionsSet.add(emoji)
+    reactionSummaryMap.set(emoji, (reactionSummaryMap.get(emoji) || 0) + 1)
+  }
+
+  return {
+    ...comment,
+    reactionSummary: sortReactionSummary(
+      Array.from(reactionSummaryMap.entries()).map(([reactionEmoji, count]) => ({
+        emoji: reactionEmoji,
+        count,
+      }))
+    ),
+    myReactions: FORUM_REACTION_EMOJIS.filter(reactionEmoji => myReactionsSet.has(reactionEmoji)),
   }
 }
+
+const updateCommentTree = (
+  comments: Comment[],
+  commentId: number,
+  updater: (comment: Comment) => Comment
+): Comment[] =>
+  comments.map(comment => {
+    if (comment.id === commentId) {
+      return updater(comment)
+    }
+
+    if (comment.replies && comment.replies.length > 0) {
+      return {
+        ...comment,
+        replies: updateCommentTree(comment.replies, commentId, updater),
+      }
+    }
+
+    return comment
+  })
 
 // Thunks
 export const fetchTopicsThunk = createAsyncThunk(
@@ -28,7 +197,7 @@ export const fetchTopicsThunk = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const state = getState() as RootState
     const res = await fetch(`${SERVER_HOST2}/api/forum/topics`, {
-      ...fetchOptions,
+      ...fetchWithCredentials,
       headers: getAuthHeaders(state),
     })
     if (!res.ok) {
@@ -46,7 +215,7 @@ export const createTopicThunk = createAsyncThunk(
   ) => {
     const state = getState() as RootState
     const res = await fetch(`${SERVER_HOST2}/api/forum/topics`, {
-      ...fetchOptions,
+      ...fetchWithCredentials,
       method: 'POST',
       headers: getAuthHeaders(state),
       body: JSON.stringify(payload),
@@ -63,13 +232,15 @@ export const fetchCommentsThunk = createAsyncThunk(
   async (topicId: number, { getState, rejectWithValue }) => {
     const state = getState() as RootState
     const res = await fetch(`${SERVER_HOST2}/api/forum/topics/${topicId}/comments`, {
-      ...fetchOptions,
+      ...fetchWithCredentials,
       headers: getAuthHeaders(state),
     })
     if (!res.ok) {
       return rejectWithValue('Failed to fetch comments')
     }
-    return (await res.json()) as Comment[]
+    const comments = (await res.json()) as Comment[]
+    saveCommentsSnapshot(topicId, comments)
+    return comments
   }
 )
 
@@ -81,7 +252,7 @@ export const createCommentThunk = createAsyncThunk(
   ) => {
     const state = getState() as RootState
     const res = await fetch(`${SERVER_HOST2}/api/forum/topics/${payload.topic_id}/comments`, {
-      ...fetchOptions,
+      ...fetchWithCredentials,
       method: 'POST',
       headers: getAuthHeaders(state),
       body: JSON.stringify(payload),
@@ -92,6 +263,31 @@ export const createCommentThunk = createAsyncThunk(
     return (await res.json()) as Comment
   }
 )
+
+export const toggleCommentReactionThunk = createAsyncThunk<
+  ToggleReactionResponse & ToggleReactionPayload,
+  ToggleReactionPayload,
+  { state: RootState; rejectValue: string }
+>('forum/toggleCommentReaction', async (payload, { getState, rejectWithValue }) => {
+  const state = getState()
+  const res = await fetch(`${SERVER_HOST2}/api/forum/comments/${payload.commentId}/reactions`, {
+    ...fetchWithCredentials,
+    method: 'POST',
+    headers: getAuthHeaders(state),
+    body: JSON.stringify({ emoji: payload.emoji }),
+  })
+
+  if (!res.ok) {
+    return rejectWithValue('Failed to toggle reaction')
+  }
+
+  const data = (await res.json()) as ToggleReactionResponse
+
+  return {
+    ...payload,
+    ...data,
+  }
+})
 
 export const forumSlice = createSlice({
   name: 'forum',
@@ -110,10 +306,23 @@ export const forumSlice = createSlice({
       .addCase(fetchTopicsThunk.fulfilled, (state, { payload }: PayloadAction<Topic[]>) => {
         state.topics = payload
         state.isLoading = false
+        state.error = null
+        state.dataSource = 'network'
+        saveTopicsSnapshot(payload)
       })
       .addCase(fetchTopicsThunk.rejected, (state, action) => {
         state.isLoading = false
+        const snapshot = loadTopicsSnapshot()
+
+        if (isNetworkFailure(action.error.message) && snapshot) {
+          state.topics = snapshot.topics
+          state.error = null
+          state.dataSource = 'cache'
+          return
+        }
+
         state.error = action.payload as string
+        state.dataSource = 'network'
       })
 
       .addCase(createTopicThunk.pending, state => {
@@ -121,13 +330,37 @@ export const forumSlice = createSlice({
       })
       .addCase(createTopicThunk.fulfilled, (state, { payload }: PayloadAction<Topic>) => {
         state.topics.unshift(payload)
+        state.dataSource = 'network'
       })
       .addCase(createTopicThunk.rejected, (state, action) => {
         state.error = action.payload as string
       })
 
+      .addCase(fetchCommentsThunk.pending, state => {
+        state.isLoading = true
+        state.error = null
+      })
       .addCase(fetchCommentsThunk.fulfilled, (state, { payload }: PayloadAction<Comment[]>) => {
-        state.currentComments = payload
+        state.currentComments = payload.map(normalizeCommentTree)
+        state.latestReactionRequestByCommentId = {}
+        state.isLoading = false
+        state.error = null
+        state.dataSource = 'network'
+      })
+      .addCase(fetchCommentsThunk.rejected, (state, action) => {
+        state.isLoading = false
+        const snapshot = loadCommentsSnapshot(action.meta.arg)
+
+        if (isNetworkFailure(action.error.message) && snapshot) {
+          state.currentComments = snapshot.comments.map(normalizeCommentTree)
+          state.latestReactionRequestByCommentId = {}
+          state.error = null
+          state.dataSource = 'cache'
+          return
+        }
+
+        state.error = action.payload as string
+        state.dataSource = 'network'
       })
 
       .addCase(createCommentThunk.pending, state => {
@@ -135,11 +368,58 @@ export const forumSlice = createSlice({
       })
       .addCase(createCommentThunk.fulfilled, (state, { payload }: PayloadAction<Comment>) => {
         if (!payload.parentId) {
-          state.currentComments.push(payload)
+          state.currentComments.push(normalizeCommentTree(payload))
         }
+        state.dataSource = 'network'
       })
       .addCase(createCommentThunk.rejected, (state, action) => {
         state.error = action.payload as string
+      })
+
+      .addCase(toggleCommentReactionThunk.pending, (state, action) => {
+        state.error = null
+        state.latestReactionRequestByCommentId[String(action.meta.arg.commentId)] =
+          action.meta.requestId
+        state.currentComments = updateCommentTree(
+          state.currentComments,
+          action.meta.arg.commentId,
+          comment => toggleLocalReaction(comment, action.meta.arg.emoji)
+        )
+      })
+      .addCase(toggleCommentReactionThunk.fulfilled, (state, action) => {
+        const commentKey = String(action.payload.commentId)
+        const latestRequestId = state.latestReactionRequestByCommentId[commentKey]
+
+        if (latestRequestId !== action.meta.requestId) {
+          return
+        }
+
+        state.currentComments = updateCommentTree(
+          state.currentComments,
+          action.payload.commentId,
+          comment => ({
+            ...comment,
+            reactionSummary: sortReactionSummary(action.payload.reactionSummary),
+            myReactions: action.payload.myReactions,
+          })
+        )
+        delete state.latestReactionRequestByCommentId[commentKey]
+      })
+      .addCase(toggleCommentReactionThunk.rejected, (state, action) => {
+        const commentKey = String(action.meta.arg.commentId)
+        const latestRequestId = state.latestReactionRequestByCommentId[commentKey]
+
+        if (latestRequestId !== action.meta.requestId) {
+          return
+        }
+
+        state.currentComments = updateCommentTree(
+          state.currentComments,
+          action.meta.arg.commentId,
+          comment => toggleLocalReaction(comment, action.meta.arg.emoji)
+        )
+        state.error = (action.payload as string) || 'Failed to toggle reaction'
+        delete state.latestReactionRequestByCommentId[commentKey]
       })
   },
 })
@@ -149,5 +429,6 @@ export const { clearForumError } = forumSlice.actions
 export const selectTopics = (state: RootState) => state.forum.topics
 export const selectCurrentComments = (state: RootState) => state.forum.currentComments
 export const selectForumLoading = (state: RootState) => state.forum.isLoading
+export const selectForumDataSource = (state: RootState) => state.forum.dataSource
 
 export default forumSlice.reducer

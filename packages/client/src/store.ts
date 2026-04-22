@@ -9,7 +9,6 @@ import { configureStore, PreloadedState } from '@reduxjs/toolkit'
 
 import friendsReducer from './slices/friendsSlice'
 import gameReducer from './slices/gameSlice'
-import ssrReducer from './slices/ssrSlice'
 import userReducer from './slices/userSlice'
 import themeReducer from './slices/themeSlice'
 import leaderboardReducer from './slices/leaderboardSlice'
@@ -24,7 +23,6 @@ declare global {
 export const reducer = combineReducers({
   friends: friendsReducer,
   game: gameReducer,
-  ssr: ssrReducer,
   user: userReducer,
   theme: themeReducer,
   leaderboard: leaderboardReducer,

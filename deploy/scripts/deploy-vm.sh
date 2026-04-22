@@ -38,5 +38,7 @@ git fetch origin "$DEPLOY_BRANCH"
 git pull --ff-only origin "$DEPLOY_BRANCH"
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >/dev/null
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --remove-orphans
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --remove-orphans db server
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T server yarn db:migrate
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --remove-orphans client
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps

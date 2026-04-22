@@ -12,10 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { selectUser } from '@/slices/userSlice'
 import { selectIsDarkMode } from '@/slices/themeSlice'
 import {
+  selectLeaderboardDataSource,
   fetchLeaderboardThunk,
   resetLeaderboard,
   selectLeaderboardEntries,
@@ -37,6 +38,7 @@ export const LeaderboardPage = () => {
   const isLoading = useSelector(selectLeaderboardLoading)
   const error = useSelector(selectLeaderboardError)
   const hasMore = useSelector(selectLeaderboardHasMore)
+  const dataSource = useSelector(selectLeaderboardDataSource)
 
   const currentPlayerName = normalizePlayerName(
     user?.displayName ||
@@ -83,6 +85,16 @@ export const LeaderboardPage = () => {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {dataSource === 'cache' && (
+            <Alert>
+              <AlertTitle>Нет сети</AlertTitle>
+              <AlertDescription>
+                Показана последняя сохраненная версия таблицы лидеров. Данные могут быть
+                устаревшими.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

@@ -63,6 +63,19 @@ export function validateLogin(value: string): string {
   return ''
 }
 
+export function validateLoginOrEmail(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return 'Логин обязателен для заполнения'
+  }
+
+  if (trimmed.includes('@')) {
+    return validateEmail(trimmed)
+  }
+
+  return validateLogin(trimmed)
+}
+
 export function validatePassword(value: string, minLength = MIN_PASSWORD_LENGTH): string {
   if (!value) {
     return 'Пароль обязателен для заполнения'

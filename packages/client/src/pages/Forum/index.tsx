@@ -7,6 +7,9 @@ import {
   fetchCommentsThunk,
   createTopicThunk,
   createCommentThunk,
+  toggleCommentReactionThunk,
+  FORUM_REACTION_EMOJIS,
+  selectForumDataSource,
   selectTopics,
   selectCurrentComments,
   selectForumLoading,
@@ -19,12 +22,12 @@ import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { escapeHTML } from '@/lib/validation'
 
 export const ForumPage = () => {
   const dispatch = useDispatch()
   const topics = useSelector(selectTopics)
   const comments = useSelector(selectCurrentComments)
+  const dataSource = useSelector(selectForumDataSource)
   const isLoading = useSelector(selectForumLoading)
   const user = useSelector(selectUser)
   const serverError = useSelector((state: RootState) => state.forum.error)
@@ -87,6 +90,17 @@ export const ForumPage = () => {
     setNewComment('')
   }
 
+  const handleToggleReaction = (commentId: number, emoji: string) => {
+    if (!selectedTopic || !user) return
+
+    dispatch(
+      toggleCommentReactionThunk({
+        commentId,
+        emoji,
+      })
+    )
+  }
+
   return (
     <WrapperContent className="w-full lg:max-w-2xl items-stretch justify-start text-left">
       <PageMeta title="Форум - Dino Game" description="Форум игры" />
@@ -120,6 +134,15 @@ export const ForumPage = () => {
         </Alert>
       )}
 
+      {dataSource === 'cache' && (
+        <Alert className="mb-6">
+          <AlertTitle>Нет сети</AlertTitle>
+          <AlertDescription>
+            Показана сохраненная версия форума. Данные могут быть устаревшими.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {isLoading && <p className="text-center py-4">Загрузка...</p>}
 
       {!selectedTopic && !showCreateTopic && (
@@ -135,11 +158,8 @@ export const ForumPage = () => {
               className="cursor-pointer transition-colors hover:bg-foreground"
               onClick={() => handleSelectTopic(topic)}>
               <CardHeader>
-                <CardTitle dangerouslySetInnerHTML={{ __html: escapeHTML(topic.title) }} />
-                <p
-                  className="text-sm text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: escapeHTML(topic.description) }}
-                />
+                <CardTitle>{topic.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">{topic.description}</p>
               </CardHeader>
             </Card>
           ))}
@@ -181,14 +201,8 @@ export const ForumPage = () => {
       {selectedTopic && (
         <div className="space-y-6">
           <div className="bg-card p-6 rounded-lg border">
-            <h2
-              className="text-2xl text-primary font-bold"
-              dangerouslySetInnerHTML={{ __html: escapeHTML(selectedTopic.title) }}
-            />
-            <p
-              className="mt-2 text-lg text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: escapeHTML(selectedTopic.description) }}
-            />
+            <h2 className="text-2xl text-primary font-bold">{selectedTopic.title}</h2>
+            <p className="mt-2 text-lg text-muted-foreground">{selectedTopic.description}</p>
           </div>
 
           <Separator />
@@ -210,10 +224,30 @@ export const ForumPage = () => {
                       {new Date(comment.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p
-                    className="text-base text-primary-foreground"
-                    dangerouslySetInnerHTML={{ __html: escapeHTML(comment.content) }}
-                  />
+                  <p className="text-base text-primary-foreground">{comment.content}</p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {FORUM_REACTION_EMOJIS.map(emoji => {
+                      const count =
+                        comment.reactionSummary.find(reaction => reaction.emoji === emoji)?.count ||
+                        0
+                      const isSelected = comment.myReactions.includes(emoji)
+
+                      return (
+                        <button
+                          key={`${comment.id}-${emoji}`}
+                          type="button"
+                          onClick={() => handleToggleReaction(comment.id, emoji)}
+                          className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                            isSelected
+                              ? 'bg-primary/20 text-foreground border-primary/40'
+                              : 'bg-card text-card-foreground hover:bg-muted'
+                          }`}>
+                          {emoji} {count > 0 ? count : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               ))}
             </div>

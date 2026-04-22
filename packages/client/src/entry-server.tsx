@@ -7,18 +7,12 @@ import {
   createStaticRouter,
   StaticRouterProvider,
 } from 'react-router-dom/server'
-import { matchRoutes, RouteObject } from 'react-router-dom'
 
 import App from './App'
-import { createContext, createFetchRequest, createUrl } from './entry-server.utils'
-import { routes, PageInitArgs } from './routes'
+import { createFetchRequest } from './entry-server.utils'
+import { routes } from './routes'
 import { createAppStore } from './store'
-import { setPageHasBeenInitializedOnServer } from './slices/ssrSlice'
 import './index.css'
-
-type AppRouteObject = RouteObject & {
-  fetchData?: (args: PageInitArgs) => Promise<unknown>
-}
 
 type RenderResponseResult = {
   response: Response
@@ -28,39 +22,6 @@ type RenderHtmlResult = {
   html: string
   helmet: ReturnType<typeof Helmet.renderStatic>
   initialState: ReturnType<ReturnType<typeof createAppStore>['getState']>
-}
-
-function findMatchedRouteFetchData(req: ExpressRequest) {
-  const url = createUrl(req)
-  const foundRoutes = matchRoutes(routes, url)
-
-  if (!foundRoutes) {
-    throw new Error('Страница не найдена!')
-  }
-
-  const routeWithFetchData = foundRoutes.find(({ route }) => (route as AppRouteObject).fetchData)
-  return (routeWithFetchData?.route as AppRouteObject)?.fetchData
-}
-
-async function initializeMatchedRoute(
-  req: ExpressRequest,
-  store: ReturnType<typeof createAppStore>
-) {
-  const fetchData = findMatchedRouteFetchData(req)
-
-  if (!fetchData) {
-    return
-  }
-
-  try {
-    await fetchData({
-      dispatch: store.dispatch,
-      state: store.getState(),
-      ctx: createContext(req),
-    })
-  } catch (error) {
-    console.log('Инициализация страницы произошла с ошибкой', error)
-  }
 }
 
 export const render = async (
@@ -77,8 +38,6 @@ export const render = async (
   }
 
   const store = createAppStore()
-  await initializeMatchedRoute(req, store)
-  store.dispatch(setPageHasBeenInitializedOnServer(true))
 
   const router = createStaticRouter(dataRoutes, context)
   const html = ReactDOM.renderToString(

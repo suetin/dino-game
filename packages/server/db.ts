@@ -2,6 +2,9 @@ import { Sequelize } from 'sequelize-typescript'
 import { Topic } from './models/Topic'
 import { Comment } from './models/Comment'
 import { Reaction } from './models/Reaction'
+import { User } from './models/User'
+import { AuthSession } from './models/AuthSession'
+import { OAuthAccount } from './models/OAuthAccount'
 
 function parseDatabaseUrl(raw: string) {
   const parsed = new URL(raw)
@@ -66,12 +69,11 @@ function configFromEnv() {
 
 export const sequelize = new Sequelize({
   ...configFromEnv(),
-  models: [Topic, Comment, Reaction],
+  models: [Topic, Comment, Reaction, User, AuthSession, OAuthAccount],
   logging: false,
 })
 
 export const connectDB = async (): Promise<void> => {
   await sequelize.authenticate()
-  await sequelize.sync()
-  console.log('[db] Подключение к PostgreSQL установлено, схема синхронизирована')
+  console.log('[db] Подключение к PostgreSQL установлено (schema is managed via migrations)')
 }

@@ -26,6 +26,7 @@ export interface UserState {
   authError: string | null
   error: string | null
   serviceId: string | null
+  currentAuthRequestId: string | null
 
   updateStatus: RequestStatus
   avatarStatus: RequestStatus
@@ -37,6 +38,7 @@ const initialState: UserState = {
   authError: null,
   error: null,
   serviceId: null,
+  currentAuthRequestId: null,
   updateStatus: 'idle',
   avatarStatus: 'idle',
 }
@@ -108,37 +110,56 @@ const postJsonOptions = {
 // --- Thunks ---
 
 // 1. FETCH USER
-export const fetchUserThunk = createAsyncThunk(
+export const fetchUserThunk = createAsyncThunk<User, void, { state: RootState }>(
   'user/fetchUserThunk',
   async (_, { rejectWithValue }) => {
-    const url = `${SERVER_HOST2}/api/auth/user`
-    const res = await fetch(url, fetchOptions)
-    if (!res.ok) {
-      const text = await res.text()
-      if (res.status === 401) {
-        return rejectWithValue('Unauthorized')
-      }
-      throw new Error(text || `Ошибка ${res.status}`)
-    }
+    try {
+      const url = `${SERVER_HOST2}/api/auth/user`
+      const res = await fetch(url, fetchOptions)
+      if (!res.ok) {
+        if (res.status === 401) {
+          return rejectWithValue('Unauthorized')
+        }
+        if (res.status >= 500) {
+          return rejectWithValue('ServerError')
+        }
 
-    const user = (await res.json()) as UserResponse
-    return normalizeUser(user)
+        const text = await res.text()
+        return rejectWithValue(text || `Ошибка ${res.status}`)
+      }
+
+      const user = (await res.json()) as UserResponse
+      return normalizeUser(user)
+    } catch (_error) {
+      return rejectWithValue('Сервер авторизации недоступен')
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      return getState().user.currentAuthRequestId === null
+    },
   }
 )
 
 // 2. LOGIN
-export const loginThunk = createAsyncThunk(
+export const loginThunk = createAsyncThunk<User, { login: string; password: string }>(
   'user/login',
   async (credentials: { login: string; password: string }, { rejectWithValue }) => {
-    const res = await fetch(`${SERVER_HOST2}/api/auth/signin`, {
-      ...postJsonOptions,
-      body: JSON.stringify(credentials),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      return rejectWithValue(data.reason || `Ошибка входа ${res.status}`)
+    try {
+      const res = await fetch(`${SERVER_HOST2}/api/auth/signin`, {
+        ...postJsonOptions,
+        body: JSON.stringify(credentials),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return rejectWithValue(data.reason || `Ошибка входа ${res.status}`)
+      }
+
+      const user = (await res.json().catch(() => ({}))) as UserResponse
+      return normalizeUser(user)
+    } catch (_error) {
+      return rejectWithValue('Не удалось подключиться к серверу авторизации')
     }
-    return {} as User
   }
 )
 
@@ -156,27 +177,42 @@ export const registerThunk = createAsyncThunk(
     },
     { rejectWithValue }
   ) => {
-    const res = await fetch(`${SERVER_HOST2}/api/auth/signup`, {
-      ...postJsonOptions,
-      body: JSON.stringify(payload),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      return rejectWithValue(data.reason || `Ошибка регистрации ${res.status}`)
+    try {
+      const res = await fetch(`${SERVER_HOST2}/api/auth/signup`, {
+        ...postJsonOptions,
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return rejectWithValue(data.reason || `Ошибка регистрации ${res.status}`)
+      }
+
+      const user = (await res.json().catch(() => ({}))) as UserResponse
+
+      return normalizeUser({
+        ...payload,
+        ...user,
+      })
+    } catch (_error) {
+      return rejectWithValue('Не удалось подключиться к серверу авторизации')
     }
-
-    const user = (await res.json().catch(() => ({}))) as UserResponse
-
-    return normalizeUser({
-      ...payload,
-      ...user,
-    })
   }
 )
 
 // 4. LOGOUT
 export const logoutThunk = createAsyncThunk('user/logout', async () => {
-  await fetch(`${SERVER_HOST2}/api/auth/logout`, { ...postJsonOptions })
+  try {
+    const res = await fetch(`${SERVER_HOST2}/api/auth/logout`, { ...postJsonOptions })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.reason || `Ошибка выхода ${res.status}`)
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Не удалось подключиться к серверу авторизации')
+  }
 })
 
 // 5. UPDATE USER
@@ -253,18 +289,52 @@ export const fetchServiceIdThunk = createAsyncThunk<string>(
   }
 )
 
-// 9. OAUTH - LOGIN
-export const oauthLoginThunk = createAsyncThunk<void, string>(
-  'user/oauthLogin',
-  async (code, { rejectWithValue }) => {
-    const res = await fetch(`${SERVER_HOST2}/api/oauth/yandex`, {
-      ...postJsonOptions,
-      body: JSON.stringify({ code, redirect_uri: REDIRECT_URI }),
-    })
+// 9. OAUTH - START
+export const fetchOauthStartUrlThunk = createAsyncThunk<string>(
+  'user/fetchOauthStartUrl',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await fetch(
+        `${SERVER_HOST2}/api/oauth/yandex/start?redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
+        fetchOptions
+      )
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      return rejectWithValue(data.reason || `Ошибка OAuth ${res.status}`)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        return rejectWithValue(errorData.reason || `Ошибка старта OAuth: ${res.status}`)
+      }
+
+      const data = (await res.json()) as { authorization_url?: unknown }
+      if (typeof data.authorization_url !== 'string' || !data.authorization_url.trim()) {
+        return rejectWithValue('Некорректный ответ OAuth start')
+      }
+
+      return data.authorization_url
+    } catch (_error) {
+      return rejectWithValue('Сетевая ошибка или невалидный JSON при старте OAuth')
+    }
+  }
+)
+
+// 10. OAUTH - LOGIN
+export const oauthLoginThunk = createAsyncThunk<User, { code: string; state: string }>(
+  'user/oauthLogin',
+  async ({ code, state }, { rejectWithValue }) => {
+    try {
+      const res = await fetch(`${SERVER_HOST2}/api/oauth/yandex`, {
+        ...postJsonOptions,
+        body: JSON.stringify({ code, state, redirect_uri: REDIRECT_URI }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return rejectWithValue(data.reason || `Ошибка OAuth ${res.status}`)
+      }
+
+      const user = (await res.json().catch(() => ({}))) as UserResponse
+      return normalizeUser(user)
+    } catch (_error) {
+      return rejectWithValue('Не удалось подключиться к серверу авторизации')
     }
   }
 )
@@ -278,6 +348,9 @@ export const userSlice = createSlice({
     clearAuthError(state) {
       state.authError = null
     },
+    setAuthError(state, { payload }: PayloadAction<string | null>) {
+      state.authError = payload
+    },
     resetUserStatuses(state) {
       state.updateStatus = 'idle'
       state.avatarStatus = 'idle'
@@ -287,18 +360,34 @@ export const userSlice = createSlice({
   extraReducers: builder => {
     builder
       // FETCH
-      .addCase(fetchUserThunk.pending, state => {
+      .addCase(fetchUserThunk.pending, (state, action) => {
         state.isLoading = true
+        state.currentAuthRequestId = action.meta.requestId
       })
-      .addCase(fetchUserThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+      .addCase(fetchUserThunk.fulfilled, (state, action) => {
+        if (state.currentAuthRequestId !== action.meta.requestId) {
+          return
+        }
+
+        const payload = action.payload
         state.data = payload
         state.isLoading = false
+        state.currentAuthRequestId = null
         state.authError = null
       })
       .addCase(fetchUserThunk.rejected, (state, action) => {
+        if (state.currentAuthRequestId !== action.meta.requestId) {
+          return
+        }
+
         state.isLoading = false
-        state.data = null
-        if (action.payload !== 'Unauthorized' && action.payload !== 'User not found') {
+        state.currentAuthRequestId = null
+        if (action.payload === 'Unauthorized') {
+          state.data = null
+          return
+        }
+
+        if (action.payload && action.payload !== 'User not found') {
           state.authError = (action.payload as string) || action.error.message || 'Ошибка'
         }
       })
@@ -307,8 +396,10 @@ export const userSlice = createSlice({
       .addCase(loginThunk.pending, state => {
         state.authError = null
       })
-      .addCase(loginThunk.fulfilled, state => {
+      .addCase(loginThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
         state.authError = null
+        state.currentAuthRequestId = null
       })
       .addCase(loginThunk.rejected, (state, action) => {
         state.authError = (action.payload as string) || action.error.message || 'Ошибка входа'
@@ -321,6 +412,7 @@ export const userSlice = createSlice({
       .addCase(registerThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
         state.data = payload
         state.authError = null
+        state.currentAuthRequestId = null
       })
       .addCase(registerThunk.rejected, (state, action) => {
         state.authError = (action.payload as string) || action.error.message || 'Ошибка регистрации'
@@ -329,6 +421,9 @@ export const userSlice = createSlice({
       // LOGOUT
       .addCase(logoutThunk.fulfilled, state => {
         state.data = null
+      })
+      .addCase(logoutThunk.rejected, (state, action) => {
+        state.authError = action.error.message || 'Ошибка выхода'
       })
 
       // OAUTH - SERVICE ID
@@ -344,8 +439,10 @@ export const userSlice = createSlice({
       .addCase(oauthLoginThunk.pending, state => {
         state.authError = null
       })
-      .addCase(oauthLoginThunk.fulfilled, state => {
+      .addCase(oauthLoginThunk.fulfilled, (state, { payload }: PayloadAction<User>) => {
+        state.data = payload
         state.authError = null
+        state.currentAuthRequestId = null
       })
       .addCase(oauthLoginThunk.rejected, (state, action) => {
         state.authError = (action.payload as string) || action.error.message || 'Ошибка OAuth'
@@ -395,7 +492,7 @@ export const userSlice = createSlice({
   },
 })
 
-export const { clearAuthError, resetUserStatuses } = userSlice.actions
+export const { clearAuthError, setAuthError, resetUserStatuses } = userSlice.actions
 
 export const selectUser = (state: RootState) => state.user.data
 export const selectAuthError = (state: RootState) => state.user.authError

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, RefObject } from 'react'
+import { useState, useEffect, useCallback, useRef, RefObject } from 'react'
 
 export const useFullscreen = (elementRef?: RefObject<HTMLElement>) => {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const isTransitioningRef = useRef(false)
 
   useEffect(() => {
     if (typeof document === 'undefined') return
@@ -23,9 +24,10 @@ export const useFullscreen = (elementRef?: RefObject<HTMLElement>) => {
   }, [elementRef])
 
   const toggleFullscreen = useCallback(async () => {
-    if (typeof document === 'undefined') return
+    if (typeof document === 'undefined' || isTransitioningRef.current) return
 
     try {
+      isTransitioningRef.current = true
       const target = elementRef?.current || document.documentElement
 
       if (!document.fullscreenElement) {
@@ -35,6 +37,8 @@ export const useFullscreen = (elementRef?: RefObject<HTMLElement>) => {
       }
     } catch (err) {
       console.error('Error attempting to enable fullscreen:', err)
+    } finally {
+      isTransitioningRef.current = false
     }
   }, [elementRef])
 
