@@ -9,6 +9,7 @@ import {
   createCommentThunk,
   toggleCommentReactionThunk,
   FORUM_REACTION_EMOJIS,
+  selectForumDataSource,
   selectTopics,
   selectCurrentComments,
   selectForumLoading,
@@ -26,6 +27,7 @@ export const ForumPage = () => {
   const dispatch = useDispatch()
   const topics = useSelector(selectTopics)
   const comments = useSelector(selectCurrentComments)
+  const dataSource = useSelector(selectForumDataSource)
   const isLoading = useSelector(selectForumLoading)
   const user = useSelector(selectUser)
   const serverError = useSelector((state: RootState) => state.forum.error)
@@ -132,6 +134,15 @@ export const ForumPage = () => {
         </Alert>
       )}
 
+      {dataSource === 'cache' && (
+        <Alert className="mb-6">
+          <AlertTitle>Нет сети</AlertTitle>
+          <AlertDescription>
+            Показана сохраненная версия форума. Данные могут быть устаревшими.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {isLoading && <p className="text-center py-4">Загрузка...</p>}
 
       {!selectedTopic && !showCreateTopic && (
@@ -229,7 +240,7 @@ export const ForumPage = () => {
                           onClick={() => handleToggleReaction(comment.id, emoji)}
                           className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                             isSelected
-                              ? 'bg-primary/40 text-foreground border-primary/20 text-white'
+                              ? 'bg-primary/20 text-foreground border-primary/40'
                               : 'bg-card text-card-foreground hover:bg-muted'
                           }`}>
                           {emoji} {count > 0 ? count : ''}

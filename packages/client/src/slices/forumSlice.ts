@@ -17,12 +17,94 @@ type ToggleReactionResponse = {
   myReactions: string[]
 }
 
+const FORUM_TOPICS_CACHE_KEY = 'dino-game-forum-topics-cache-v1'
+const FORUM_COMMENTS_CACHE_PREFIX = 'dino-game-forum-comments-cache-v1'
+
+type TopicsSnapshot = {
+  topics: Topic[]
+}
+
+type CommentsSnapshot = {
+  comments: Comment[]
+}
+
+const getCommentsCacheKey = (topicId: number) => `${FORUM_COMMENTS_CACHE_PREFIX}:${topicId}`
+
+const loadTopicsSnapshot = (): TopicsSnapshot | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FORUM_TOPICS_CACHE_KEY)
+
+    if (!raw) {
+      return null
+    }
+
+    return JSON.parse(raw) as TopicsSnapshot
+  } catch (error) {
+    return null
+  }
+}
+
+const saveTopicsSnapshot = (topics: Topic[]) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      FORUM_TOPICS_CACHE_KEY,
+      JSON.stringify({ topics } satisfies TopicsSnapshot)
+    )
+  } catch (error) {
+    return
+  }
+}
+
+const loadCommentsSnapshot = (topicId: number): CommentsSnapshot | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getCommentsCacheKey(topicId))
+
+    if (!raw) {
+      return null
+    }
+
+    return JSON.parse(raw) as CommentsSnapshot
+  } catch (error) {
+    return null
+  }
+}
+
+const saveCommentsSnapshot = (topicId: number, comments: Comment[]) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      getCommentsCacheKey(topicId),
+      JSON.stringify({ comments } satisfies CommentsSnapshot)
+    )
+  } catch (error) {
+    return
+  }
+}
+
+const isNetworkFailure = (message?: string) => message === 'Failed to fetch'
+
 const initialState: ForumState = {
   topics: [],
   currentComments: [],
   isLoading: false,
   error: null,
   latestReactionRequestByCommentId: {},
+  dataSource: 'network',
 }
 
 const fetchOptions = {}
@@ -156,7 +238,9 @@ export const fetchCommentsThunk = createAsyncThunk(
     if (!res.ok) {
       return rejectWithValue('Failed to fetch comments')
     }
-    return (await res.json()) as Comment[]
+    const comments = (await res.json()) as Comment[]
+    saveCommentsSnapshot(topicId, comments)
+    return comments
   }
 )
 
@@ -222,10 +306,23 @@ export const forumSlice = createSlice({
       .addCase(fetchTopicsThunk.fulfilled, (state, { payload }: PayloadAction<Topic[]>) => {
         state.topics = payload
         state.isLoading = false
+        state.error = null
+        state.dataSource = 'network'
+        saveTopicsSnapshot(payload)
       })
       .addCase(fetchTopicsThunk.rejected, (state, action) => {
         state.isLoading = false
+        const snapshot = loadTopicsSnapshot()
+
+        if (isNetworkFailure(action.error.message) && snapshot) {
+          state.topics = snapshot.topics
+          state.error = null
+          state.dataSource = 'cache'
+          return
+        }
+
         state.error = action.payload as string
+        state.dataSource = 'network'
       })
 
       .addCase(createTopicThunk.pending, state => {
@@ -233,14 +330,37 @@ export const forumSlice = createSlice({
       })
       .addCase(createTopicThunk.fulfilled, (state, { payload }: PayloadAction<Topic>) => {
         state.topics.unshift(payload)
+        state.dataSource = 'network'
       })
       .addCase(createTopicThunk.rejected, (state, action) => {
         state.error = action.payload as string
       })
 
+      .addCase(fetchCommentsThunk.pending, state => {
+        state.isLoading = true
+        state.error = null
+      })
       .addCase(fetchCommentsThunk.fulfilled, (state, { payload }: PayloadAction<Comment[]>) => {
         state.currentComments = payload.map(normalizeCommentTree)
         state.latestReactionRequestByCommentId = {}
+        state.isLoading = false
+        state.error = null
+        state.dataSource = 'network'
+      })
+      .addCase(fetchCommentsThunk.rejected, (state, action) => {
+        state.isLoading = false
+        const snapshot = loadCommentsSnapshot(action.meta.arg)
+
+        if (isNetworkFailure(action.error.message) && snapshot) {
+          state.currentComments = snapshot.comments.map(normalizeCommentTree)
+          state.latestReactionRequestByCommentId = {}
+          state.error = null
+          state.dataSource = 'cache'
+          return
+        }
+
+        state.error = action.payload as string
+        state.dataSource = 'network'
       })
 
       .addCase(createCommentThunk.pending, state => {
@@ -250,6 +370,7 @@ export const forumSlice = createSlice({
         if (!payload.parentId) {
           state.currentComments.push(normalizeCommentTree(payload))
         }
+        state.dataSource = 'network'
       })
       .addCase(createCommentThunk.rejected, (state, action) => {
         state.error = action.payload as string
@@ -308,5 +429,6 @@ export const { clearForumError } = forumSlice.actions
 export const selectTopics = (state: RootState) => state.forum.topics
 export const selectCurrentComments = (state: RootState) => state.forum.currentComments
 export const selectForumLoading = (state: RootState) => state.forum.isLoading
+export const selectForumDataSource = (state: RootState) => state.forum.dataSource
 
 export default forumSlice.reducer
