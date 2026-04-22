@@ -1,3 +1,5 @@
+export type ForumDataSource = 'network' | 'cache'
+
 export interface Topic {
   id: number
   title: string
@@ -15,7 +17,14 @@ export interface Comment {
   parentId: number | null
   createdAt: string
   updatedAt: string
+  reactionSummary: ReactionSummaryItem[]
+  myReactions: string[]
   replies?: Comment[]
+}
+
+export interface ReactionSummaryItem {
+  emoji: string
+  count: number
 }
 
 export interface ForumState {
@@ -23,4 +32,6 @@ export interface ForumState {
   currentComments: Comment[]
   isLoading: boolean
   error: string | null
+  dataSource: ForumDataSource
+  latestReactionRequestByCommentId: Record<string, string>
 }

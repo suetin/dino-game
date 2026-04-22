@@ -7,6 +7,8 @@ import {
   fetchCommentsThunk,
   createTopicThunk,
   createCommentThunk,
+  toggleCommentReactionThunk,
+  FORUM_REACTION_EMOJIS,
   selectForumDataSource,
   selectTopics,
   selectCurrentComments,
@@ -86,6 +88,17 @@ export const ForumPage = () => {
       })
     )
     setNewComment('')
+  }
+
+  const handleToggleReaction = (commentId: number, emoji: string) => {
+    if (!selectedTopic || !user) return
+
+    dispatch(
+      toggleCommentReactionThunk({
+        commentId,
+        emoji,
+      })
+    )
   }
 
   return (
@@ -212,6 +225,29 @@ export const ForumPage = () => {
                     </span>
                   </div>
                   <p className="text-base text-primary-foreground">{comment.content}</p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {FORUM_REACTION_EMOJIS.map(emoji => {
+                      const count =
+                        comment.reactionSummary.find(reaction => reaction.emoji === emoji)?.count ||
+                        0
+                      const isSelected = comment.myReactions.includes(emoji)
+
+                      return (
+                        <button
+                          key={`${comment.id}-${emoji}`}
+                          type="button"
+                          onClick={() => handleToggleReaction(comment.id, emoji)}
+                          className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                            isSelected
+                              ? 'bg-primary/20 text-foreground border-primary/40'
+                              : 'bg-card text-card-foreground hover:bg-muted'
+                          }`}>
+                          {emoji} {count > 0 ? count : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
