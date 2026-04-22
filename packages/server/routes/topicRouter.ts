@@ -27,7 +27,7 @@ type CommentWithReactionSummary = Omit<CommentWithRelations, 'reactions' | 'repl
 
 function withReactionSummary(
   comment: CommentWithRelations,
-  currentUserId: number | null
+  currentUserId: number
 ): CommentWithReactionSummary {
   const { reactions: rawReactions, replies: rawReplies, ...rest } = comment
   const reactions = Array.isArray(rawReactions) ? rawReactions : []
@@ -85,17 +85,18 @@ topicRouter.get('/', async (_req: Request, res: Response) => {
 
 topicRouter.post('/', sanitize, async (req: Request, res: Response) => {
   try {
-    const { title, description, author_id } = req.body
+    const { title, description } = req.body
+    const authorId = await extractUserId(req)
 
-    if (!title || !author_id) {
-      res.status(400).json({ error: 'Title and author_id are required' })
+    if (!title) {
+      res.status(400).json({ error: 'Title is required' })
       return
     }
 
     const topic = await Topic.create({
       title,
       description: description || '',
-      author_id,
+      author_id: authorId,
     })
     res.status(201).json(topic)
   } catch (err) {
@@ -122,7 +123,7 @@ topicRouter.get('/:id', async (req: Request, res: Response) => {
 
 topicRouter.get('/:id/comments', async (req: Request, res: Response) => {
   try {
-    const currentUserId = extractUserId(req)
+    const currentUserId = await extractUserId(req)
     const topicId = Number(req.params.id)
 
     if (!Number.isInteger(topicId) || topicId <= 0) {
@@ -147,16 +148,17 @@ topicRouter.get('/:id/comments', async (req: Request, res: Response) => {
 
 topicRouter.post('/:id/comments', sanitize, async (req: Request, res: Response) => {
   try {
-    const { content, author_id, parentId } = req.body
+    const { content, parentId } = req.body
+    const authorId = await extractUserId(req)
 
-    if (!content || !author_id) {
-      res.status(400).json({ error: 'Content and author_id are required' })
+    if (!content) {
+      res.status(400).json({ error: 'Content is required' })
       return
     }
 
     const comment = await Comment.create({
       content,
-      author_id,
+      author_id: authorId,
       topic_id: Number(req.params.id),
       parentId: parentId || null,
     })

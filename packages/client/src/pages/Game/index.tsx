@@ -1,5 +1,4 @@
 import { useRef, type MouseEvent } from 'react'
-import { usePage } from '@/hooks/usePage'
 import { useDispatch, useSelector } from '@/store'
 import {
   selectGamePhase,
@@ -25,8 +24,6 @@ export const GamePage = () => {
   const pageRef = useRef<HTMLDivElement | null>(null)
 
   const { isFullscreen, toggleFullscreen } = useFullscreen(pageRef)
-
-  usePage({ initPage: initGamePage })
 
   const handleFullscreenClick = async (event: MouseEvent<HTMLButtonElement>) => {
     event.currentTarget.blur()
@@ -80,8 +77,4 @@ export const GamePage = () => {
       </div>
     </WrapperContent>
   )
-}
-
-export const initGamePage = async () => {
-  return Promise.resolve()
 }

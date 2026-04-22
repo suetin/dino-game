@@ -163,7 +163,7 @@ export const RegisterPage = () => {
             onBlur={() =>
               setErrors(prev => ({
                 ...prev,
-                name: validateRequired(first_name, 'Имя') || undefined,
+                first_name: validateRequired(first_name, 'Имя') || undefined,
               }))
             }
             autoComplete="given-name"

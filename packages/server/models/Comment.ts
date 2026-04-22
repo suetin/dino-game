@@ -24,7 +24,7 @@ export class Comment extends Model {
   @Index
   @ForeignKey(() => Comment)
   @Column({ type: DataType.INTEGER })
-  parentId!: number
+  parentId!: number | null
 
   @Column({ type: DataType.INTEGER, allowNull: false })
   author_id!: number

@@ -1,5 +1,4 @@
 import type { Request } from 'express'
-import { getUserIdFromSession } from '../auth/session'
 
 export const ALLOWED_REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '😢', '👎'] as const
 
@@ -12,28 +11,17 @@ export function isAllowedReactionEmoji(emoji: string): boolean {
   return ALLOWED_REACTION_EMOJIS.includes(emoji as (typeof ALLOWED_REACTION_EMOJIS)[number])
 }
 
-export function extractUserId(req: Request): number | null {
-  const sessionUserId = getUserIdFromSession(req)
-
-  if (sessionUserId !== null) {
-    return sessionUserId
+export async function extractUserId(req: Request): Promise<number> {
+  if (req.user) {
+    return req.user.id
   }
 
-  const headerUserId = req.headers['x-auth-user-id']
-
-  if (typeof headerUserId === 'string') {
-    const parsed = Number(headerUserId)
-    if (Number.isInteger(parsed) && parsed > 0) {
-      return parsed
-    }
-  }
-
-  return null
+  throw new Error('Authenticated user is missing from request')
 }
 
 export function summarizeReactions(
   reactions: Array<{ emoji: string; user_id: number }>,
-  currentUserId: number | null
+  currentUserId: number
 ): { reactionSummary: ReactionSummaryItem[]; myReactions: string[] } {
   const counts = new Map<string, number>()
   const myReactionsSet = new Set<string>()
@@ -41,7 +29,7 @@ export function summarizeReactions(
   for (const reaction of reactions) {
     counts.set(reaction.emoji, (counts.get(reaction.emoji) || 0) + 1)
 
-    if (currentUserId !== null && reaction.user_id === currentUserId) {
+    if (reaction.user_id === currentUserId) {
       myReactionsSet.add(reaction.emoji)
     }
   }

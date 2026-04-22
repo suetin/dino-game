@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from '@/store'
-import { fetchUserThunk, selectUser, selectUserError } from '@/slices/userSlice'
-import { usePage } from '@/hooks/usePage'
-import { PageInitArgs } from '@/routes'
+import { selectUser, selectUserError } from '@/slices/userSlice'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
@@ -38,8 +36,6 @@ const ProfilePage = () => {
   const updateStatus = useSelector(selectUserUpdateStatus)
   const avatarStatus = useSelector(selectUserAvatarStatus)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  usePage({ initPage: initProfilePage })
 
   const [isEdit, setIsEdit] = useState(false)
   const [form, setForm] = useState<ProfileFormState>(emptyProfileForm)
@@ -338,9 +334,3 @@ const ProfilePage = () => {
   )
 }
 export default ProfilePage
-
-export const initProfilePage = async ({ dispatch, state }: PageInitArgs) => {
-  if (!selectUser(state)) {
-    return dispatch(fetchUserThunk())
-  }
-}

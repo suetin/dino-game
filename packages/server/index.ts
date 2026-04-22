@@ -1,50 +1,37 @@
 import './loadEnv'
 import 'reflect-metadata'
-import express, { Request, Response } from 'express'
+import express, { NextFunction, Request, Response } from 'express'
 import cors from 'cors'
-import { createSession, destroySession, getUserIdFromSession } from './auth/session'
+import { createAuthRouter } from './auth/router'
+import { normalizeLoginOrEmail, normalizeValue } from './auth/authService'
+import { toClientUserResponse } from './auth/userSerialization'
+import { runtimeConfig } from './config/runtimeConfig'
 import { requireAuth } from './middleware/requireAuth'
+import { getRequestUserOrUnauthorized } from './middleware/requestUser'
 import { sanitize } from './middleware/sanitize'
+import { User } from './models/User'
 
 const app = express()
-const port = Number(process.env.SERVER_PORT) || 3001
+const port = runtimeConfig.serverPort
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  })
-)
-app.use(express.json())
-
-type StoredUser = {
-  id: number
-  first_name: string
-  second_name: string
-  display_name: string | null
-  login: string
-  email: string
-  phone: string
-  avatar: string | null
-  avatarUrl: string | null
+function normalizeOrigin(origin: string): string | null {
+  try {
+    return new URL(origin).origin
+  } catch (_error) {
+    return null
+  }
 }
 
-type SignInBody = {
-  login?: unknown
-  password?: unknown
-}
-
-type SignUpBody = {
-  email?: unknown
-  password?: unknown
-  first_name?: unknown
-  second_name?: unknown
-  login?: unknown
-  phone?: unknown
-}
-
-type OAuthBody = {
-  code?: unknown
+function hasDatabaseConfig(): boolean {
+  return (
+    Boolean(process.env.DATABASE_URL?.trim()) ||
+    Boolean(
+      process.env.POSTGRES_USER &&
+        process.env.POSTGRES_PASSWORD &&
+        process.env.POSTGRES_DB &&
+        process.env.POSTGRES_PORT
+    )
+  )
 }
 
 type ProfileUpdateBody = {
@@ -53,133 +40,6 @@ type ProfileUpdateBody = {
   display_name?: unknown
   email?: unknown
   phone?: unknown
-}
-
-const DEFAULT_USER_ID = 1
-const YANDEX_SERVICE_ID = 'mock-yandex-service-id'
-
-const users = new Map<number, StoredUser>([
-  [
-    DEFAULT_USER_ID,
-    {
-      id: DEFAULT_USER_ID,
-      first_name: 'Степа',
-      second_name: 'Степанов',
-      display_name: 'Stepa',
-      login: 'stepa',
-      email: 'stepa@example.com',
-      phone: '89000000000',
-      avatar: null,
-      avatarUrl: null,
-    },
-  ],
-])
-
-function sendUnauthorized(res: Response) {
-  return res.status(401).json({ reason: 'Unauthorized' })
-}
-
-function sendUserNotFound(res: Response) {
-  return res.status(404).json({ reason: 'User not found' })
-}
-
-function findUserByLogin(login: string): StoredUser | null {
-  const normalizedLogin = login.trim().toLowerCase()
-
-  for (const user of users.values()) {
-    if (
-      user.login.trim().toLowerCase() === normalizedLogin ||
-      user.email.trim().toLowerCase() === normalizedLogin
-    ) {
-      return user
-    }
-  }
-
-  return null
-}
-
-function hasUserConflict(login: string, email: string): boolean {
-  const normalizedLogin = login.trim().toLowerCase()
-  const normalizedEmail = email.trim().toLowerCase()
-
-  for (const user of users.values()) {
-    if (
-      user.login.trim().toLowerCase() === normalizedLogin ||
-      user.email.trim().toLowerCase() === normalizedEmail
-    ) {
-      return true
-    }
-  }
-
-  return false
-}
-
-function getNextUserId(): number {
-  let nextUserId = DEFAULT_USER_ID + 1
-
-  while (users.has(nextUserId)) {
-    nextUserId += 1
-  }
-
-  return nextUserId
-}
-
-function getStoredUserBySession(req: Request): StoredUser | null {
-  const userId = getUserIdFromSession(req)
-
-  if (userId === null) {
-    return null
-  }
-
-  return users.get(userId) ?? null
-}
-
-function toAuthUserResponse(user: StoredUser) {
-  return {
-    id: user.id,
-    first_name: user.first_name,
-    second_name: user.second_name,
-    display_name: user.display_name,
-    login: user.login,
-    email: user.email,
-    phone: user.phone,
-    avatar: user.avatar,
-    avatarUrl: user.avatarUrl,
-  }
-}
-
-function toClientUserResponse(user: StoredUser) {
-  return {
-    ...toAuthUserResponse(user),
-    id: String(user.id),
-    displayName: user.display_name ?? '',
-    userName: user.login,
-  }
-}
-
-function updateStoredUser(
-  userId: number,
-  updates: Partial<
-    Pick<
-      StoredUser,
-      'first_name' | 'second_name' | 'display_name' | 'email' | 'phone' | 'avatar' | 'avatarUrl'
-    >
-  >
-): StoredUser | null {
-  const currentUser = users.get(userId)
-
-  if (!currentUser) {
-    return null
-  }
-
-  const updatedUser: StoredUser = {
-    ...currentUser,
-    ...updates,
-  }
-
-  users.set(userId, updatedUser)
-
-  return updatedUser
 }
 
 function parseAvatarUpload(req: Request): { avatar: string; avatarUrl: string } | null {
@@ -233,201 +93,152 @@ function parseAvatarUpload(req: Request): { avatar: string; avatarUrl: string } 
   return null
 }
 
-app.post('/api/auth/signin', (req: Request, res: Response) => {
-  const { login, password } = (req.body ?? {}) as SignInBody
-
-  if (typeof login !== 'string' || typeof password !== 'string' || !login.trim() || !password) {
-    return res.status(400).json({ reason: 'Логин и пароль обязательны' })
-  }
-
-  const user = findUserByLogin(login)
-
-  if (!user) {
-    return res.status(401).json({ reason: 'Неверный логин или пароль' })
-  }
-
-  createSession(res, user.id)
-
-  return res.json(toClientUserResponse(user))
+const corsAllowlist = new Set(
+  [...runtimeConfig.corsAllowlist].map(value => normalizeOrigin(value)).filter(Boolean) as string[]
+)
+app.use((_req, res, next) => {
+  res.append('Vary', 'Origin')
+  next()
 })
+app.use(
+  cors({
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true)
+        return
+      }
 
-app.post('/api/auth/signup', (req: Request, res: Response) => {
-  const { email, password, first_name, second_name, login, phone } = (req.body ?? {}) as SignUpBody
+      const normalized = normalizeOrigin(origin)
+      if (normalized && corsAllowlist.has(normalized)) {
+        callback(null, true)
+        return
+      }
 
-  if (
-    typeof email !== 'string' ||
-    typeof password !== 'string' ||
-    typeof first_name !== 'string' ||
-    typeof second_name !== 'string' ||
-    typeof login !== 'string' ||
-    typeof phone !== 'string'
-  ) {
-    return res.status(400).json({ reason: 'Некорректные данные регистрации' })
-  }
+      callback(new Error('CORS origin is not allowed'))
+    },
+  })
+)
+app.use(express.json())
+app.use('/api', createAuthRouter())
+app.use('/api/user/profile', requireAuth)
 
-  const nextEmail = email.trim()
-  const nextFirstName = first_name.trim()
-  const nextSecondName = second_name.trim()
-  const nextLogin = login.trim()
-  const nextPhone = phone.trim()
+app.put('/api/user/profile', async (req: Request, res: Response) => {
+  try {
+    const currentUser = getRequestUserOrUnauthorized(req, res)
+    if (!currentUser) return
 
-  if (!nextEmail || !password || !nextFirstName || !nextSecondName || !nextLogin || !nextPhone) {
-    return res.status(400).json({ reason: 'Все поля обязательны' })
-  }
+    const body = (req.body ?? {}) as ProfileUpdateBody
+    const nextValues: Partial<
+      Pick<User, 'first_name' | 'second_name' | 'display_name' | 'email' | 'phone'>
+    > = {}
+    const fields = ['first_name', 'second_name', 'display_name', 'email', 'phone'] as const
 
-  if (hasUserConflict(nextLogin, nextEmail)) {
-    return res.status(409).json({ reason: 'Пользователь с таким логином или email уже существует' })
-  }
+    for (const field of fields) {
+      const value = body[field]
 
-  const userId = getNextUserId()
-  const newUser: StoredUser = {
-    id: userId,
-    first_name: nextFirstName,
-    second_name: nextSecondName,
-    display_name: null,
-    login: nextLogin,
-    email: nextEmail,
-    phone: nextPhone,
-    avatar: null,
-    avatarUrl: null,
-  }
+      if (value === undefined) {
+        continue
+      }
 
-  users.set(userId, newUser)
-  createSession(res, userId)
+      if (typeof value !== 'string') {
+        return res.status(400).json({ reason: `Field "${field}" must be a string` })
+      }
 
-  return res.json(toClientUserResponse(newUser))
-})
-
-app.post('/api/oauth/yandex', (req: Request, res: Response) => {
-  const { code } = (req.body ?? {}) as OAuthBody
-
-  if (typeof code !== 'string' || !code.trim()) {
-    return res.status(400).json({ reason: 'OAuth code is required' })
-  }
-
-  const user = users.get(DEFAULT_USER_ID)
-
-  if (!user) {
-    return sendUserNotFound(res)
-  }
-
-  createSession(res, user.id)
-
-  return res.json(toClientUserResponse(user))
-})
-
-app.get('/api/oauth/yandex/service-id', (_req: Request, res: Response) => {
-  return res.json({ service_id: YANDEX_SERVICE_ID })
-})
-
-app.get('/api/auth/user', (req: Request, res: Response) => {
-  const userId = getUserIdFromSession(req)
-
-  if (userId === null) {
-    return sendUnauthorized(res)
-  }
-
-  const user = users.get(userId)
-
-  if (!user) {
-    return sendUserNotFound(res)
-  }
-
-  return res.json(toAuthUserResponse(user))
-})
-
-app.post('/api/auth/logout', (req: Request, res: Response) => {
-  destroySession(req, res)
-  res.sendStatus(200)
-})
-
-app.put('/api/user/profile', (req: Request, res: Response) => {
-  const currentUser = getStoredUserBySession(req)
-
-  if (!currentUser) {
-    return getUserIdFromSession(req) === null ? sendUnauthorized(res) : sendUserNotFound(res)
-  }
-
-  const body = (req.body ?? {}) as ProfileUpdateBody
-  const nextValues: Partial<
-    Pick<StoredUser, 'first_name' | 'second_name' | 'display_name' | 'email' | 'phone'>
-  > = {}
-  const fields = ['first_name', 'second_name', 'display_name', 'email', 'phone'] as const
-
-  for (const field of fields) {
-    const value = body[field]
-
-    if (value === undefined) {
-      continue
+      if (field === 'email') {
+        nextValues[field] = normalizeLoginOrEmail(value)
+      } else {
+        nextValues[field] = normalizeValue(value)
+      }
     }
 
-    if (typeof value !== 'string') {
-      return res.status(400).json({ reason: `Field "${field}" must be a string` })
+    if (nextValues.email && nextValues.email !== currentUser.email) {
+      const existingByEmail = await User.findOne({ where: { email: nextValues.email } })
+
+      if (existingByEmail && existingByEmail.id !== currentUser.id) {
+        return res
+          .status(409)
+          .json({ reason: 'Пользователь с таким логином или email уже существует' })
+      }
     }
 
-    nextValues[field] = value.trim()
+    Object.assign(currentUser, nextValues)
+    await currentUser.save()
+
+    return res.json(toClientUserResponse(currentUser))
+  } catch (error) {
+    console.error('Failed to update profile:', error)
+    return res.status(500).json({ reason: 'Internal Server Error' })
   }
-
-  const updatedUser = updateStoredUser(currentUser.id, nextValues)
-
-  if (!updatedUser) {
-    return sendUserNotFound(res)
-  }
-
-  return res.json(toClientUserResponse(updatedUser))
 })
 
 app.put(
   '/api/user/profile/avatar',
   express.raw({ type: () => true, limit: '10mb' }),
-  (req: Request, res: Response) => {
-    const currentUser = getStoredUserBySession(req)
+  async (req: Request, res: Response) => {
+    try {
+      const currentUser = getRequestUserOrUnauthorized(req, res)
+      if (!currentUser) return
 
-    if (!currentUser) {
-      return getUserIdFromSession(req) === null ? sendUnauthorized(res) : sendUserNotFound(res)
+      const uploadedAvatar = parseAvatarUpload(req)
+
+      if (!uploadedAvatar) {
+        return res.status(400).json({ reason: 'Avatar file is required' })
+      }
+
+      currentUser.avatar = uploadedAvatar.avatar
+      currentUser.avatarUrl = uploadedAvatar.avatarUrl
+      await currentUser.save()
+
+      return res.json(toClientUserResponse(currentUser))
+    } catch (error) {
+      console.error('Failed to upload avatar:', error)
+      return res.status(500).json({ reason: 'Internal Server Error' })
     }
-
-    const uploadedAvatar = parseAvatarUpload(req)
-
-    if (!uploadedAvatar) {
-      return res.status(400).json({ reason: 'Avatar file is required' })
-    }
-
-    const updatedUser = updateStoredUser(currentUser.id, uploadedAvatar)
-
-    if (!updatedUser) {
-      return sendUserNotFound(res)
-    }
-
-    return res.json(toClientUserResponse(updatedUser))
   }
 )
 
-app.delete('/api/user/profile/avatar', (req: Request, res: Response) => {
-  const currentUser = getStoredUserBySession(req)
+app.delete('/api/user/profile/avatar', async (req: Request, res: Response) => {
+  try {
+    const currentUser = getRequestUserOrUnauthorized(req, res)
+    if (!currentUser) return
 
-  if (!currentUser) {
-    return getUserIdFromSession(req) === null ? sendUnauthorized(res) : sendUserNotFound(res)
+    currentUser.avatar = null
+    currentUser.avatarUrl = null
+    await currentUser.save()
+
+    return res.json(toClientUserResponse(currentUser))
+  } catch (error) {
+    console.error('Failed to remove avatar:', error)
+    return res.status(500).json({ reason: 'Internal Server Error' })
   }
-
-  const updatedUser = updateStoredUser(currentUser.id, {
-    avatar: null,
-    avatarUrl: null,
-  })
-
-  if (!updatedUser) {
-    return sendUserNotFound(res)
-  }
-
-  return res.json(toClientUserResponse(updatedUser))
 })
 
 app.get('/', (_req: Request, res: Response) => {
   res.json('Server OK')
 })
 
+app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (error instanceof Error && error.message === 'CORS origin is not allowed') {
+    return res.status(403).json({ reason: 'CORS origin is not allowed' })
+  }
+
+  return next(error)
+})
+
 const start = async () => {
   try {
+    if (corsAllowlist.size === 0) {
+      throw new Error('AUTH_CORS_ORIGIN_ALLOWLIST is required and must contain at least one origin')
+    }
+
+    if (!hasDatabaseConfig()) {
+      throw new Error('DB config is required because auth and sessions are stored in PostgreSQL')
+    }
+
+    const { connectDB } = await import('./db')
+    await connectDB()
+
     const { topicRouter } = await import('./routes/topicRouter')
     const { commentRouter } = await import('./routes/commentRouter')
     const { default: leaderboardRouter } = await import('./routes/leaderboardRouter')
@@ -435,22 +246,6 @@ const start = async () => {
     app.use('/api/forum/topics', requireAuth, sanitize, topicRouter)
     app.use('/api/forum/comments', requireAuth, sanitize, commentRouter)
     app.use('/api/leaderboard', requireAuth, sanitize, leaderboardRouter)
-
-    const hasDatabaseConfig =
-      Boolean(process.env.DATABASE_URL?.trim()) ||
-      Boolean(
-        process.env.POSTGRES_USER &&
-          process.env.POSTGRES_PASSWORD &&
-          process.env.POSTGRES_DB &&
-          process.env.POSTGRES_PORT
-      )
-
-    if (hasDatabaseConfig) {
-      const { connectDB } = await import('./db')
-      await connectDB()
-    } else {
-      console.warn('[db] DB config is missing, forum and leaderboard routes require PostgreSQL')
-    }
 
     app.listen(port, () => {
       console.log(`Server running on http://localhost:${port}`)
