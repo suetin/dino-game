@@ -15,7 +15,14 @@ export interface Comment {
   parentId: number | null
   createdAt: string
   updatedAt: string
+  reactionSummary: ReactionSummaryItem[]
+  myReactions: string[]
   replies?: Comment[]
+}
+
+export interface ReactionSummaryItem {
+  emoji: string
+  count: number
 }
 
 export interface ForumState {
@@ -23,4 +30,5 @@ export interface ForumState {
   currentComments: Comment[]
   isLoading: boolean
   error: string | null
+  latestReactionRequestByCommentId: Record<string, string>
 }
