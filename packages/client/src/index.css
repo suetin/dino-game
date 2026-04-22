@@ -1,3 +1,128 @@
-body {
-  background-color: #fafafa;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  [data-theme='light'] {
+    --background: 0 0% 100%;
+    --foreground: 231 23% 18%;
+
+    --card: 225 55% 96%;
+    --card-foreground: 230 31% 19%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 231 23% 18%;
+
+    --primary: 231 23% 18%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 27% 85%;
+    --secondary-foreground: 220 18% 48%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 223 15% 40%;
+
+    --accent: 19 100% 51%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 219 37% 82%;
+    --input: 219 37% 82%;
+    --ring: 231 23% 18%;
+
+    --radius: 0.5rem;
+  }
+
+  [data-theme='dark'] {
+    --background: 235 26% 9%;
+    --foreground: 220 31% 85%;
+
+    --card: 232 24% 14%;
+    --card-foreground: 220 31% 85%;
+
+    --popover: 232 24% 12%;
+    --popover-foreground: 220 31% 85%;
+
+    --primary: 220 31% 85%;
+    --primary-foreground: 235 26% 9%;
+
+    --secondary: 228 22% 18%;
+    --secondary-foreground: 220 20% 85%;
+
+    --muted: 230 18% 16%;
+    --muted-foreground: 220 12% 65%;
+
+    --accent: 19 100% 51%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 230 25% 24%;
+    --input: 230 25% 24%;
+    --ring: 220 30% 80%;
+  }
+
+  [data-theme='ocean'] {
+    --background: 212 45% 12%;
+    --foreground: 205 100% 94%;
+
+    --card: 212 38% 18%;
+    --card-foreground: 205 100% 94%;
+
+    --popover: 212 38% 16%;
+    --popover-foreground: 205 100% 94%;
+
+    --primary: 196 100% 62%;
+    --primary-foreground: 212 45% 12%;
+
+    --secondary: 210 30% 24%;
+    --secondary-foreground: 205 100% 92%;
+
+    --muted: 211 28% 20%;
+    --muted-foreground: 205 35% 74%;
+
+    --accent: 186 85% 56%;
+    --accent-foreground: 212 45% 12%;
+
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 210 30% 28%;
+    --input: 210 30% 28%;
+    --ring: 196 100% 62%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1 {
+    @apply mb-6 text-4xl font-bold text-foreground;
+  }
+
+  h2 {
+    @apply mb-4 text-3xl font-semibold text-foreground;
+  }
+
+  p {
+    @apply mb-4 leading-relaxed text-muted-foreground;
+  }
+
+  a {
+    @apply text-foreground hover:text-secondary;
+  }
 }

@@ -1,14 +1,19 @@
+import React from 'react'
+import { render } from '@testing-library/react'
+
+import { createAppStore } from './store'
 import App from './App'
-import { render, screen } from '@testing-library/react'
 
-const appContent = 'Вот тут будет жить ваше приложение :)'
+describe('App', () => {
+  const store = createAppStore()
 
-// @ts-ignore
-global.fetch = jest.fn(() =>
-  Promise.resolve({ json: () => Promise.resolve('hey') })
-)
+  it('renders without crashing', () => {
+    render(<App store={store}>content</App>)
+  })
 
-test('Example test', async () => {
-  render(<App />)
-  expect(screen.getByText(appContent)).toBeDefined()
+  it('renders children inside the shared app shell', () => {
+    const { getByText } = render(<App store={store}>content</App>)
+
+    expect(getByText('content')).toBeDefined()
+  })
 })

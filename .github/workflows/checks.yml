@@ -1,4 +1,4 @@
-name: Lint
+name: CI
 
 on:
   pull_request:
@@ -11,10 +11,10 @@ jobs:
   eslint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 18
       - name: Install main deps
         run: yarn
       - name: Initialize
@@ -23,3 +23,10 @@ jobs:
         run: yarn lint
       - name: Test
         run: yarn test
+      - name: Build
+        env:
+          EXTERNAL_SERVER_URL: http://localhost:3001
+          INTERNAL_SERVER_URL: http://localhost:3001
+          SERVER_PORT: 3001
+          CLIENT_PORT: 3000
+        run: yarn build

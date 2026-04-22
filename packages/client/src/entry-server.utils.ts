@@ -35,7 +35,7 @@ export const createFetchRequest = (req: ExpressRequest) => {
     method: string
     headers: Headers
     signal: AbortSignal
-    body?: any
+    body?: unknown
   } = {
     method: req.method,
     headers,
@@ -46,5 +46,5 @@ export const createFetchRequest = (req: ExpressRequest) => {
     init.body = req.body
   }
 
-  return new Request(url.href, init)
+  return new Request(url.href, init as RequestInit)
 }

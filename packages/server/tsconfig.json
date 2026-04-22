@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "experimentalDecorators": true,  // Включает поддержку декораторов
+    "emitDecoratorMetadata": true,   // Позволяет сохранять типы данных для Sequelize
     "composite": true,
     "target": "es2019",
     "module": "commonjs",
@@ -17,7 +19,6 @@
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "forceConsistentCasingInFileNames": true,
-    "importsNotUsedAsValues": "error",
     "lib": ["es2019", "esnext.asynciterable"],
     "types": ["node", "jest"],
     "baseUrl": ".",
@@ -26,4 +27,5 @@
     },
     "outDir": "dist"
   }
+
 }

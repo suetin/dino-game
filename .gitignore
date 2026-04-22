@@ -1,7 +1,21 @@
 node_modules/
 .env
+.env.production
+.env.production.local
 .idea
 .vscode
 dist
 tmp
 *.log
+# Скомпилированные JS файлы (тот самый server/index.js)
+**/server/index.js
+**/server/index.d.ts
+**/client/tsconfig.server.tsbuildinfo
+**/*.tsbuildinfo
+
+# Если клиент тоже собирает что-то внутри себя
+packages/client/dist/
+packages/server/dist/
+
+# Системные файлы
+.DS_Store
