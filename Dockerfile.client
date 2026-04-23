@@ -28,7 +28,7 @@ ENV EXTERNAL_SERVER_URL=$EXTERNAL_SERVER_URL
 ENV INTERNAL_SERVER_URL=$INTERNAL_SERVER_URL
 
 RUN yarn lerna bootstrap
-RUN rm -rf /app/packages/client/dist/ && yarn build --scope=client
+RUN rm -rf /app/packages/client/dist/ && yarn --cwd /app/packages/client build
 RUN cd packages/client && yarn tsc -p tsconfig.server.json
 
 FROM node:$NODE_VERSION-buster-slim as production
