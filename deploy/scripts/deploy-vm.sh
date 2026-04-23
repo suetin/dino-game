@@ -39,6 +39,8 @@ git pull --ff-only origin "$DEPLOY_BRANCH"
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >/dev/null
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --remove-orphans db server
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T server yarn db:migrate
+# Run migrations in an ephemeral container to avoid running them inside
+# the long-lived server process where memory pressure is typically higher.
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm --no-deps -e NODE_OPTIONS="--max-old-space-size=512" server yarn db:migrate
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build --remove-orphans client
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
