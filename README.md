@@ -237,7 +237,7 @@ docker compose logs server --tail 50
 
 Если `server` стартует раньше готовности Postgres, compose не отпустит его до `healthy` у `db`; при ручном запуске только `server` без `db` приложение завершится с ошибкой подключения — это ожидаемо.
 
-**Sequelize:** при старте вызывается `sequelize.sync()` (см. `packages/server/db.ts`) — таблицы создаются/приводятся к моделям без отдельного шага миграций. Для продакшена позже имеет смысл перейти на миграции.
+**Sequelize:** схема БД во всех средах обновляется только миграциями (`yarn --cwd packages/server db:migrate`), без `sequelize.sync()`.
 
 Отдельный сервис: `docker compose up db` или `docker compose up server`.
 

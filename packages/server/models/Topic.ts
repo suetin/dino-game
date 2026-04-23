@@ -7,7 +7,7 @@ export class Topic extends Model {
   title!: string
 
   @Column({ type: DataType.TEXT })
-  description!: string
+  description!: string | null
 
   @Index
   @Column({ type: DataType.INTEGER, allowNull: false })

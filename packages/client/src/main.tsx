@@ -6,9 +6,12 @@ import App from './App'
 import { startServiceWorker } from './startServiceWorker'
 import { routes } from './routes'
 import { store } from './store'
+import { fetchUserThunk } from './slices/userSlice'
 import './index.css'
 
 const router = createBrowserRouter(routes)
+
+store.dispatch(fetchUserThunk())
 
 startServiceWorker()
 

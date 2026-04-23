@@ -1,91 +1,99 @@
 import type { Request, Response } from 'express'
 import crypto from 'crypto'
+import { Op } from 'sequelize'
+import { AuthSession } from '../models/AuthSession'
+import { runtimeConfig } from '../config/runtimeConfig'
+import { clearCookie, readCookie, setCookie } from './cookie'
 
-export const SESSION_COOKIE_NAME = process.env.AUTH_SESSION_COOKIE?.trim() || 'dino_session'
-
-type SessionData = {
-  userId: number
-  createdAt: number
-}
-
-const sessions = new Map<string, SessionData>()
+export const SESSION_COOKIE_NAME = runtimeConfig.sessionCookieName
 
 const ONE_WEEK_SEC = 60 * 60 * 24 * 7
+const ONE_WEEK_MS = ONE_WEEK_SEC * 1000
+const EXPIRED_SESSIONS_CLEANUP_INTERVAL_MS = 60 * 1000
 
-function readCookie(req: Request, name: string): string | undefined {
-  const header = req.headers.cookie
-  if (!header) {
-    return undefined
-  }
-
-  const parts = header.split(';').map(c => c.trim())
-
-  for (const part of parts) {
-    const eq = part.indexOf('=')
-    if (eq === -1) continue
-
-    const key = part.slice(0, eq).trim()
-    if (key !== name) continue
-
-    const value = part.slice(eq + 1)
-
-    try {
-      return decodeURIComponent(value)
-    } catch {
-      return value
-    }
-  }
-
-  return undefined
-}
-
-function appendSetCookie(res: Response, value: string, maxAgeSec: number): void {
-  const segments = [
-    `${SESSION_COOKIE_NAME}=${encodeURIComponent(value)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${maxAgeSec}`,
-  ]
-
-  res.append('Set-Cookie', segments.join('; '))
-}
+let lastExpiredSessionsCleanup = 0
 
 function getSessionId(req: Request): string | null {
   return readCookie(req, SESSION_COOKIE_NAME) ?? null
 }
 
-export function createSession(res: Response, userId: number) {
-  const sessionId = crypto.randomUUID()
+async function cleanupExpiredSessions(now: Date): Promise<void> {
+  const nowMs = now.getTime()
 
-  sessions.set(sessionId, {
-    userId,
-    createdAt: Date.now(),
+  if (nowMs - lastExpiredSessionsCleanup < EXPIRED_SESSIONS_CLEANUP_INTERVAL_MS) {
+    return
+  }
+
+  lastExpiredSessionsCleanup = nowMs
+
+  await AuthSession.destroy({
+    where: {
+      expires_at: {
+        [Op.lte]: now,
+      },
+    },
   })
-
-  appendSetCookie(res, sessionId, ONE_WEEK_SEC)
 }
 
-export function destroySession(req: Request, res: Response): void {
+export async function createSession(req: Request, res: Response, userId: number): Promise<void> {
+  const now = new Date()
+  await cleanupExpiredSessions(now)
+
+  const previousToken = getSessionId(req)
+
+  if (previousToken) {
+    await AuthSession.destroy({ where: { id: previousToken } })
+  }
+
+  const sessionId = crypto.randomUUID()
+
+  await AuthSession.create({
+    id: sessionId,
+    user_id: userId,
+    created_at: now,
+    expires_at: new Date(now.getTime() + ONE_WEEK_MS),
+  })
+
+  setCookie(res, SESSION_COOKIE_NAME, sessionId, {
+    maxAgeSec: ONE_WEEK_SEC,
+    httpOnly: true,
+    request: req,
+  })
+}
+
+export async function destroySession(req: Request, res: Response): Promise<void> {
+  const now = new Date()
+  await cleanupExpiredSessions(now)
+
   const token = getSessionId(req)
 
   if (token) {
-    sessions.delete(token)
+    await AuthSession.destroy({ where: { id: token } })
   }
 
-  appendSetCookie(res, '', 0)
+  clearCookie(res, SESSION_COOKIE_NAME, { httpOnly: true, request: req })
 }
 
-export function hasValidSession(req: Request): boolean {
-  return getUserIdFromSession(req) !== null
-}
-
-export function getUserIdFromSession(req: Request): number | null {
+export async function getUserIdFromSession(req: Request): Promise<number | null> {
   const token = getSessionId(req)
 
-  if (!token) return null
+  if (!token) {
+    return null
+  }
 
-  const session = sessions.get(token)
+  const now = new Date()
+  await cleanupExpiredSessions(now)
 
-  return session?.userId ?? null
+  const session = await AuthSession.findByPk(token)
+
+  if (!session) {
+    return null
+  }
+
+  if (session.expires_at.getTime() <= now.getTime()) {
+    await session.destroy()
+    return null
+  }
+
+  return session.user_id
 }

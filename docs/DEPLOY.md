@@ -53,6 +53,7 @@ DB_NAME=dino
 DB_USER=dino
 DB_PASSWORD=strong-password
 EXTERNAL_SERVER_URL=http://example.com
+AUTH_CORS_ORIGIN_ALLOWLIST=http://example.com
 INTERNAL_SERVER_URL=http://server:3001
 ```
 
@@ -148,7 +149,8 @@ ssh-keyscan -H example.com
 - проверяет наличие `.env.production`;
 - проверяет, что серверный репозиторий уже находится на нужной ветке;
 - выполняет только `git pull --ff-only origin <branch>`;
-- запускает `docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build --remove-orphans`.
+- поднимает `db` и `server`, затем выполняет миграции `yarn db:migrate` в контейнере `server`;
+- после миграций поднимает `client` через `docker compose up -d --build --remove-orphans`.
 
 Если хотите деплоить не `main`, сначала один раз вручную переключите серверный репозиторий на нужную ветку.
 

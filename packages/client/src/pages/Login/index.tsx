@@ -3,12 +3,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from '@/store'
 import {
   loginThunk,
-  fetchUserThunk,
   selectUser,
   selectAuthError,
   clearAuthError,
+  setAuthError,
 } from '@/slices/userSlice'
-import { validateLogin, validatePassword } from '@/lib/validation'
+import { validateLoginOrEmail, validatePassword } from '@/lib/validation'
 import { WrapperContent } from '@/components/WrapperContent'
 import { PageMeta } from '@/components/PageMeta'
 import { Button } from '@/components/ui/button'
@@ -36,12 +36,18 @@ export const LoginPage = () => {
   }, [user, navigate, location.state])
 
   useEffect(() => {
+    const authErrorFromRoute = location.state?.authError
+    if (typeof authErrorFromRoute === 'string' && authErrorFromRoute.trim()) {
+      dispatch(setAuthError(authErrorFromRoute))
+      return
+    }
+
     dispatch(clearAuthError())
-  }, [dispatch])
+  }, [dispatch, location.state])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const loginErr = validateLogin(login)
+    const loginErr = validateLoginOrEmail(login)
     const passwordErr = validatePassword(password)
     if (loginErr || passwordErr) {
       setErrors({
@@ -54,12 +60,9 @@ export const LoginPage = () => {
     setErrors({})
 
     // Новая двухшаговая логика
-    dispatch(loginThunk({ login: login, password }))
+    dispatch(clearAuthError())
+    dispatch(loginThunk({ login, password }))
       .unwrap()
-      .then(() => {
-        // После успешного логина, запрашиваем данные пользователя
-        return dispatch(fetchUserThunk()).unwrap()
-      })
       .catch(err => {
         // Ошибка будет обработана в extraReducers и отображена через selectAuthError
         console.error('Login failed:', err)
@@ -79,13 +82,13 @@ export const LoginPage = () => {
           <Label htmlFor="login-email">Логин</Label>
           <Input
             id="login"
-            type="login"
+            type="text"
             value={login}
             onChange={e => setLogin(e.target.value)}
             onBlur={() =>
-              setErrors(prev => ({ ...prev, login: validateLogin(login) || undefined }))
+              setErrors(prev => ({ ...prev, login: validateLoginOrEmail(login) || undefined }))
             }
-            autoComplete="email"
+            autoComplete="username"
             className={errors.login ? 'border-destructive' : ''}
           />
           {errors.login && <p className="text-sm text-destructive">{errors.login}</p>}

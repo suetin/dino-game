@@ -29,6 +29,23 @@ yarn dev --scope=server
 
 Переменные БД: если задан непустой `DATABASE_URL`, Sequelize использует **только** его (остальные `POSTGRES_*` для подключения не читаются). Иначе нужен полный набор `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`. В Docker-образе сервера файлы `.env` не подгружаются (`LOAD_DOTENV_FILE=0`). Шаблон — `.env.example` в корне монорепозитория.
 
+Для OAuth Яндекса нужно задать `YANDEX_OAUTH_CLIENT_ID`, `YANDEX_OAUTH_CLIENT_SECRET` и `YANDEX_OAUTH_REDIRECT_URI_ALLOWLIST` (список URI через запятую).
+Параметр `COOKIE_SECURE` управляет флагом `Secure` для cookie: `auto` (по умолчанию, только для HTTPS), `true` (всегда), `false` (никогда).
+
+`sequelize.sync()` не используется; схема БД управляется только миграциями.
+
+## Миграции
+
+```bash
+yarn --cwd packages/server db:migrate
+```
+
+Откат последней миграции:
+
+```bash
+yarn --cwd packages/server db:migrate:undo
+```
+
 ## API: темы (Topics)
 
 Метод,Эндпоинт,Описание

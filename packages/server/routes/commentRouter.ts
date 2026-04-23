@@ -24,16 +24,17 @@ commentRouter.get('/:id', async (req: Request, res: Response) => {
 
 commentRouter.post('/:id/replies', sanitize, async (req: Request, res: Response) => {
   try {
-    const { content, author_id, topic_id } = req.body
+    const { content, topic_id } = req.body
+    const authorId = await extractUserId(req)
 
-    if (!content || !author_id || !topic_id) {
-      res.status(400).json({ error: 'Content, author_id and topic_id are required' })
+    if (!content || !topic_id) {
+      res.status(400).json({ error: 'Content and topic_id are required' })
       return
     }
 
     const reply = await Comment.create({
       content,
-      author_id,
+      author_id: authorId,
       topic_id,
       parentId: Number(req.params.id),
     })
@@ -51,7 +52,7 @@ commentRouter.get('/:id/reactions', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid comment id' })
       return
     }
-    const currentUserId = extractUserId(req)
+    const currentUserId = await extractUserId(req)
     const comment = await Comment.findByPk(commentId)
 
     if (!comment) {
@@ -90,12 +91,7 @@ commentRouter.post('/:id/reactions', sanitize, async (req: Request, res: Respons
       return
     }
     const { emoji } = req.body
-    const userId = extractUserId(req)
-
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' })
-      return
-    }
+    const userId = await extractUserId(req)
 
     if (!emoji || typeof emoji !== 'string') {
       res.status(400).json({ error: 'Emoji is required' })

@@ -10,19 +10,19 @@ function escapeHtml(text: string): string {
 }
 
 export function sanitize(req: Request, _res: Response, next: NextFunction): void {
-  const sanitizeValue = (value: any): any => {
+  const sanitizeValue = <T>(value: T): T => {
     if (typeof value === 'string') {
-      return escapeHtml(value.trim())
+      return escapeHtml(value.trim()) as T
     }
     if (Array.isArray(value)) {
-      return value.map(sanitizeValue)
+      return value.map(item => sanitizeValue(item)) as T
     }
     if (value !== null && typeof value === 'object') {
-      const sanitizedObj: any = {}
-      for (const key in value) {
-        sanitizedObj[key] = sanitizeValue(value[key])
+      const sanitizedObj: Record<string, unknown> = {}
+      for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+        sanitizedObj[key] = sanitizeValue(nestedValue)
       }
-      return sanitizedObj
+      return sanitizedObj as T
     }
     return value
   }

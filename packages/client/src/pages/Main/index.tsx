@@ -7,19 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Toast } from '@/components/ui/toast'
 import gameNameImg from '@/assets/images/game_name.png'
 import { share } from '@/lib/share'
-import { PageInitArgs } from '@/routes'
-import { selectUser, fetchUserThunk } from '@/slices/userSlice'
+import { selectUser } from '@/slices/userSlice'
 import { useSelector } from '@/store'
-import { usePage } from '@/hooks/usePage'
 
 export const MainPage = () => {
   const user = useSelector(selectUser)
   const [isLoading, setIsLoading] = useState(false)
   const [isShareToastOpen, setIsShareToastOpen] = useState(false)
   const [shareToastKey, setShareToastKey] = useState(0)
-
-  // Используем хук для инициализации на клиенте (если перешли по ссылке)
-  usePage({ initPage: initMainPage })
 
   const handleShare = async () => {
     setShareToastKey(currentValue => currentValue + 1)
@@ -95,10 +90,4 @@ export const MainPage = () => {
       </div>
     </WrapperContent>
   )
-}
-
-export const initMainPage = async ({ dispatch, state }: PageInitArgs) => {
-  if (!selectUser(state)) {
-    return dispatch(fetchUserThunk())
-  }
 }

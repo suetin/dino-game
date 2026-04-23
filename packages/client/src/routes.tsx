@@ -1,27 +1,16 @@
 import { Layout } from './components/Layout'
 import { GameLayout } from './components/GameLayout'
 import { RequireAuth } from './hocs/RequireAuth'
-import { MainPage, initMainPage } from './pages/Main'
-import { initGamePage, GamePage } from './pages/Game'
-import { initNotFoundPage, NotFoundPage } from './pages/NotFound'
+import { MainPage } from './pages/Main'
+import { GamePage } from './pages/Game'
+import { NotFoundPage } from './pages/NotFound'
 import { LoginPage } from './pages/Login'
 import { RegisterPage } from './pages/Register'
-import ProfilePage, { initProfilePage } from './pages/Profile'
+import ProfilePage from './pages/Profile'
 import { LeaderboardPage } from './pages/Leaderboard'
 import { ForumPage } from './pages/Forum'
 import { Error500Page } from './pages/Error500'
 import { ROUTES } from './config/routes'
-import { AppDispatch, RootState } from './store'
-
-export type PageInitContext = {
-  clientToken?: string
-}
-
-export type PageInitArgs = {
-  dispatch: AppDispatch
-  state: RootState
-  ctx: PageInitContext
-}
 
 export const routes = [
   {
@@ -31,7 +20,6 @@ export const routes = [
       {
         index: true,
         element: <MainPage />,
-        fetchData: initMainPage,
       },
       {
         path: ROUTES.LOGIN,
@@ -51,7 +39,6 @@ export const routes = [
           {
             path: ROUTES.PROFILE,
             element: <ProfilePage />,
-            fetchData: initProfilePage,
           },
           {
             path: ROUTES.LEADERBOARD,
@@ -66,7 +53,6 @@ export const routes = [
       {
         path: '*',
         element: <NotFoundPage />,
-        fetchData: initNotFoundPage,
       },
     ],
   },
@@ -80,7 +66,6 @@ export const routes = [
           {
             index: true,
             element: <GamePage />,
-            fetchData: initGamePage,
           },
         ],
       },
